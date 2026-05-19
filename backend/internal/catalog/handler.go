@@ -25,10 +25,33 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/feeds/{id}/catalog-sources", h.ConnectCatalogSources)
 }
 
+// Topics godoc
+// @Summary Получить каталог тем
+// @Description Возвращает curated-каталог тем и страниц источников, которые можно подключить к ленте.
+// @Tags catalog
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Topic
+// @Failure 401 {object} map[string]string
+// @Router /api/catalog/topics [get]
 func (h *Handler) Topics(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, h.service.Topics(r.Context()))
 }
 
+// Discover godoc
+// @Summary Найти RSS на странице
+// @Description Скачивает HTML-страницу и ищет link rel=alternate type=application/rss+xml.
+// @Tags catalog
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param payload body DiscoverRequest true "URL страницы"
+// @Success 200 {object} DiscoverResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 422 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/catalog/discover [post]
 func (h *Handler) Discover(w http.ResponseWriter, r *http.Request) {
 	var req DiscoverRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -44,6 +67,22 @@ func (h *Handler) Discover(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// ConnectCatalogSources godoc
+// @Summary Подключить источники каталога к ленте
+// @Description Находит RSS для выбранных catalog source ids, создает sources и feed_sources.
+// @Tags catalog
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Param payload body ConnectCatalogSourcesRequest true "Catalog source IDs"
+// @Success 201 {object} ConnectCatalogSourcesResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 422 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/catalog-sources [post]
 func (h *Handler) ConnectCatalogSources(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {

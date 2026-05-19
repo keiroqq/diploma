@@ -31,6 +31,7 @@ func (s *Service) ListFeedItems(ctx context.Context, feedID uuid.UUID, userID uu
 	if query.Mode == "" {
 		query.Mode = ModeToday
 	}
+	query.Category = strings.TrimSpace(query.Category)
 	if query.Mode != ModeToday && query.Mode != ModeArchive {
 		return nil, httpx.ErrInvalidInput
 	}
@@ -275,6 +276,12 @@ func ParseListQuery(values map[string][]string) (ListQuery, error) {
 			return ListQuery{}, err
 		}
 		query.Cursor = &cursor
+	}
+	if rawCategory := firstQuery(values, "category"); rawCategory != "" {
+		query.Category = slug.Make(rawCategory)
+		if query.Category == "" {
+			query.Category = strings.ToLower(strings.TrimSpace(rawCategory))
+		}
 	}
 	return query, nil
 }

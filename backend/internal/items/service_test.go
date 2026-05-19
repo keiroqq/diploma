@@ -114,3 +114,15 @@ func TestParseListQuery(t *testing.T) {
 		t.Fatalf("Cursor = %v, want %s", query.Cursor, cursor)
 	}
 }
+
+func TestParseListQueryCategory(t *testing.T) {
+	query, err := ParseListQuery(map[string][]string{
+		"category": {"Artificial Intelligence"},
+	})
+	if err != nil {
+		t.Fatalf("ParseListQuery returned error: %v", err)
+	}
+	if query.Category != "artificial-intelligence" {
+		t.Fatalf("Category = %q, want artificial-intelligence", query.Category)
+	}
+}

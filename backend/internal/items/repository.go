@@ -48,6 +48,12 @@ func (r *Repository) ListCandidates(ctx context.Context, feedID uuid.UUID, userI
 			db = db.Where("feed_items.published_at < ?", *query.Cursor)
 		}
 	}
+	if query.Category != "" {
+		db = db.
+			Joins("JOIN feed_item_categories ON feed_item_categories.item_id = feed_items.id").
+			Joins("JOIN categories ON categories.id = feed_item_categories.category_id").
+			Where("categories.slug = ?", query.Category)
+	}
 
 	var records []models.FeedItem
 	err := db.Order("feed_items.published_at DESC").

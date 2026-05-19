@@ -14,9 +14,10 @@ const (
 )
 
 type ListQuery struct {
-	Mode   ListMode
-	Cursor *time.Time
-	Limit  int
+	Mode     ListMode
+	Cursor   *time.Time
+	Limit    int
+	Category string
 }
 
 type ItemResponse struct {

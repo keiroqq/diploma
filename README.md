@@ -54,10 +54,17 @@ Healthcheck: `GET http://localhost:8080/health`.
 ```bash
 make test         # go test ./...
 make vet          # go vet ./...
+make swagger      # сгенерировать backend/docs для Swagger UI
 make backend-run  # запуск backend API
 make db-up        # PostgreSQL через docker compose
 make migrate-up   # применить SQL-миграции через контейнер
 make migrate-down # откатить SQL-миграции через контейнер
+```
+
+Swagger UI доступен после запуска backend:
+
+```text
+http://localhost:8080/swagger/index.html
 ```
 
 ## Основные endpoint'ы MVP
@@ -74,10 +81,12 @@ make migrate-down # откатить SQL-миграции через конте�
 - `GET /api/catalog/topics`
 - `POST /api/catalog/discover`
 - `POST /api/feeds/{id}/catalog-sources`
+- `GET /api/categories`
 - `POST /api/sources/{id}/refresh`
 - `POST /api/feeds/{id}/refresh`
 - `GET /api/feeds/{id}/items?mode=today&limit=20`
 - `GET /api/feeds/{id}/items?mode=archive&cursor=...&limit=20`
+- `GET /api/feeds/{id}/items?mode=today&category=ai&limit=20`
 - `POST /api/items/{id}/save`
 - `DELETE /api/items/{id}/save`
 - `GET /api/saved`
@@ -123,3 +132,17 @@ RSS-источники возвращают сырые теги по-разно�
 ```
 
 Фильтр `target_type=tag` ищет и по исходным тегам, и по нормализованным категориям.
+
+Категории можно получить отдельным endpoint:
+
+```bash
+curl http://localhost:8080/api/categories \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Материалы можно фильтровать по slug категории:
+
+```bash
+curl "http://localhost:8080/api/feeds/$FEED_ID/items?mode=today&category=ai&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```

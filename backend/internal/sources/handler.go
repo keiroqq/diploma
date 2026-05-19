@@ -35,6 +35,15 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/sources/{id}/refresh", h.Refresh)
 }
 
+// List godoc
+// @Summary Получить доступные источники
+// @Tags sources
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} SourceResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources [get]
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -48,6 +57,18 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Get godoc
+// @Summary Получить источник
+// @Tags sources
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Source ID"
+// @Success 200 {object} SourceResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources/{id} [get]
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -65,6 +86,18 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Create godoc
+// @Summary Создать RSS-источник
+// @Tags sources
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param payload body CreateSourceRequest true "Данные источника"
+// @Success 201 {object} SourceResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -85,6 +118,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, resp)
 }
 
+// Update godoc
+// @Summary Обновить источник
+// @Tags sources
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Source ID"
+// @Param payload body UpdateSourceRequest true "Данные источника"
+// @Success 200 {object} SourceResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -109,6 +157,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Delete godoc
+// @Summary Удалить источник
+// @Tags sources
+// @Security BearerAuth
+// @Param id path string true "Source ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources/{id} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -125,6 +185,18 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusNoContent, nil)
 }
 
+// Refresh godoc
+// @Summary Обновить источник
+// @Tags refresh
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Source ID"
+// @Success 200 {object} rss.RefreshResult
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources/{id}/refresh [post]
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {

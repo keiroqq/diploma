@@ -7,10 +7,20 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/keiro/content-digest/backend/docs"
 	"github.com/keiro/content-digest/backend/internal/app"
 	"github.com/keiro/content-digest/backend/internal/config"
 )
 
+// @title Content Digest API
+// @version 0.1
+// @description REST API для PWA-агрегатора RSS/Atom-контента с персональными лентами, каталогом тем и нормализацией тегов.
+// @BasePath /
+// @schemes http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Введите токен в формате: Bearer <JWT>
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
