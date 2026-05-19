@@ -49,6 +49,16 @@ go run ./cmd/server
 
 Healthcheck: `GET http://localhost:8080/health`.
 
+## Dev-команды
+
+```bash
+make test         # go test ./...
+make vet          # go vet ./...
+make backend-run  # запуск backend API
+make db-up        # PostgreSQL через docker compose
+make migrate-up   # применить SQL-миграции
+```
+
 ## Основные endpoint'ы MVP
 
 - `POST /api/auth/register`
