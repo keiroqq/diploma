@@ -17,7 +17,7 @@ func TestNormalizerExtractsCleanExcerptImageAndTags(t *testing.T) {
 		GUID:            "habr-123",
 		Title:           "  Go RSS pipeline  ",
 		Link:            "https://example.com/posts/go-rss",
-		Description:     `<p>Полезное описание Читать далее</p><img src="https://cdn.example.com/cover.png">`,
+		Description:     `<p>Полезное описание &gt;&gt;Читать&gt;&gt;</p><img src="https://cdn.example.com/cover.png">`,
 		Content:         "<p>Full content</p>",
 		PublishedParsed: &publishedAt,
 		Author:          &gofeed.Person{Name: "Alice"},

@@ -1,4 +1,5 @@
 DATABASE_URL ?= postgres://app:app@localhost:5432/content_digest?sslmode=disable
+DOCKER_DATABASE_URL ?= postgres://app:app@postgres:5432/content_digest?sslmode=disable
 
 .PHONY: test vet backend-run db-up db-down migrate-up migrate-down
 
@@ -18,7 +19,7 @@ db-down:
 	docker compose down
 
 migrate-up:
-	migrate -path backend/migrations -database "$(DATABASE_URL)" up
+	docker compose run --rm migrate -path=/migrations -database "$(DOCKER_DATABASE_URL)" up
 
 migrate-down:
-	migrate -path backend/migrations -database "$(DATABASE_URL)" down
+	docker compose run --rm migrate -path=/migrations -database "$(DOCKER_DATABASE_URL)" down

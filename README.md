@@ -29,15 +29,15 @@ docker-compose.yml
 1. Запустить PostgreSQL:
 
 ```bash
-docker compose up -d
+make db-up
 ```
 
 2. Создать `backend/.env` на основе `backend/.env.example`.
 
-3. Применить миграции через `golang-migrate`:
+3. Применить миграции через контейнер `golang-migrate`:
 
 ```bash
-migrate -path backend/migrations -database "postgres://app:app@localhost:5432/content_digest?sslmode=disable" up
+make migrate-up
 ```
 
 4. Запустить API:
@@ -56,7 +56,8 @@ make test         # go test ./...
 make vet          # go vet ./...
 make backend-run  # запуск backend API
 make db-up        # PostgreSQL через docker compose
-make migrate-up   # применить SQL-миграции
+make migrate-up   # применить SQL-миграции через контейнер
+make migrate-down # откатить SQL-миграции через контейнер
 ```
 
 ## Основные endpoint'ы MVP
