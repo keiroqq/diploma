@@ -246,27 +246,26 @@ func findOrCreateTag(tx *gorm.DB, name string) (*models.Tag, error) {
 	tagSlug := normalizeTagSlug(name)
 
 	var tag models.Tag
-	err := tx.Where("slug = ?", tagSlug).First(&tag).Error
+	err := tx.
+		Where("slug = ?", tagSlug).
+		Attrs(models.Tag{
+			ID:   uuid.New(),
+			Name: name,
+			Slug: tagSlug,
+		}).
+		FirstOrCreate(&tag).Error
 	if err == nil {
 		return &tag, nil
 	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+
+	if !strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 		return nil, err
 	}
 
-	tag = models.Tag{
-		ID:   uuid.New(),
-		Name: name,
-		Slug: tagSlug,
+	if err := tx.Where("slug = ?", tagSlug).First(&tag).Error; err != nil {
+		return nil, err
 	}
-	if err := tx.Create(&tag).Error; err != nil {
-		if !strings.Contains(strings.ToLower(err.Error()), "duplicate") {
-			return nil, err
-		}
-		if err := tx.Where("slug = ?", tagSlug).First(&tag).Error; err != nil {
-			return nil, err
-		}
-	}
+
 	return &tag, nil
 }
 
