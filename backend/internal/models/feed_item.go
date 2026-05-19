@@ -26,4 +26,5 @@ type FeedItem struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	Source       Source         `gorm:"foreignKey:SourceID" json:"source,omitempty"`
 	Tags         []Tag          `gorm:"many2many:feed_item_tags;joinForeignKey:ItemID;joinReferences:TagID" json:"tags,omitempty"`
+	Categories   []Category     `gorm:"many2many:feed_item_categories;joinForeignKey:ItemID;joinReferences:CategoryID" json:"categories,omitempty"`
 }

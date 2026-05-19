@@ -8,6 +8,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/keiro/content-digest/backend/internal/auth"
+	"github.com/keiro/content-digest/backend/internal/catalog"
 	"github.com/keiro/content-digest/backend/internal/feeds"
 	"github.com/keiro/content-digest/backend/internal/filters"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
@@ -18,6 +19,7 @@ import (
 
 type routerHandlers struct {
 	Auth    *auth.Handler
+	Catalog *catalog.Handler
 	Feeds   *feeds.Handler
 	Sources *sources.Handler
 	Items   *items.Handler
@@ -46,6 +48,7 @@ func newRouter(logger *slog.Logger, handlers routerHandlers, jwtSecret string) h
 
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware)
+			handlers.Catalog.RegisterRoutes(r)
 			handlers.Feeds.RegisterRoutes(r)
 			handlers.Sources.RegisterRoutes(r)
 			handlers.Items.RegisterRoutes(r)

@@ -211,6 +211,12 @@ func matchesRule(item models.FeedItem, rule models.FilterRule) bool {
 				return true
 			}
 		}
+		for _, category := range item.Categories {
+			categoryName := strings.ToLower(category.Name)
+			if categoryName == value || category.Slug == ruleSlug || strings.Contains(categoryName, value) {
+				return true
+			}
+		}
 		return false
 	case models.TargetSource:
 		if strings.EqualFold(item.SourceID.String(), value) {
@@ -229,6 +235,10 @@ func itemResponse(item models.FeedItem, score int, isSaved bool) ItemResponse {
 	for _, tag := range item.Tags {
 		tags = append(tags, tag.Name)
 	}
+	categories := make([]string, 0, len(item.Categories))
+	for _, category := range item.Categories {
+		categories = append(categories, category.Name)
+	}
 
 	return ItemResponse{
 		ID:          item.ID,
@@ -241,6 +251,7 @@ func itemResponse(item models.FeedItem, score int, isSaved bool) ItemResponse {
 		Author:      item.Author,
 		PublishedAt: item.PublishedAt,
 		Tags:        tags,
+		Categories:  categories,
 		Score:       score,
 		IsSaved:     isSaved,
 	}

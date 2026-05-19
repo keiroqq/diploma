@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/keiro/content-digest/backend/internal/auth"
+	"github.com/keiro/content-digest/backend/internal/catalog"
 	"github.com/keiro/content-digest/backend/internal/config"
 	"github.com/keiro/content-digest/backend/internal/db"
 	"github.com/keiro/content-digest/backend/internal/feeds"
@@ -56,10 +57,14 @@ func New(cfg *config.Config) (*App, error) {
 	itemRepo := items.NewRepository(gormDB)
 	itemService := items.NewService(itemRepo)
 
+	catalogRepo := catalog.NewRepository(gormDB)
+	catalogService := catalog.NewService(catalogRepo)
+
 	rssService := rss.NewService(gormDB, cfg.RSSRefreshCooldown, log)
 
 	handlers := routerHandlers{
 		Auth:    authHandler,
+		Catalog: catalog.NewHandler(catalogService),
 		Feeds:   feeds.NewHandler(feedService, rssService),
 		Sources: sources.NewHandler(sourceService, rssService),
 		Items:   items.NewHandler(itemService),

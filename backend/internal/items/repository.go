@@ -37,6 +37,7 @@ func (r *Repository) ListCandidates(ctx context.Context, feedID uuid.UUID, userI
 		Joins("JOIN feeds ON feeds.id = feed_sources.feed_id").
 		Preload("Source").
 		Preload("Tags").
+		Preload("Categories").
 		Where("feed_sources.feed_id = ? AND feeds.user_id = ? AND feed_sources.is_enabled = true", feedID, userID)
 
 	if query.Mode == ModeToday {
@@ -108,6 +109,7 @@ func (r *Repository) ListSaved(ctx context.Context, userID uuid.UUID, limit int)
 	err := r.db.WithContext(ctx).
 		Preload("Item.Source").
 		Preload("Item.Tags").
+		Preload("Item.Categories").
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).

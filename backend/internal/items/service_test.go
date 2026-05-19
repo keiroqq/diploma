@@ -22,6 +22,7 @@ func TestApplyRulesFiltersAndScoresItems(t *testing.T) {
 			PublishedAt: time.Date(2026, 5, 19, 12, 0, 0, 0, time.UTC),
 			Source:      models.Source{ID: sourceID, Name: "Habr"},
 			Tags:        []models.Tag{{Name: "Go"}},
+			Categories:  []models.Category{{Name: "Backend", Slug: "backend"}},
 		},
 		{
 			ID:          uuid.New(),
@@ -32,6 +33,7 @@ func TestApplyRulesFiltersAndScoresItems(t *testing.T) {
 			PublishedAt: time.Date(2026, 5, 19, 11, 0, 0, 0, time.UTC),
 			Source:      models.Source{ID: sourceID, Name: "Habr"},
 			Tags:        []models.Tag{{Name: "Go"}},
+			Categories:  []models.Category{{Name: "Backend", Slug: "backend"}},
 		},
 		{
 			ID:          uuid.New(),
@@ -61,6 +63,33 @@ func TestApplyRulesFiltersAndScoresItems(t *testing.T) {
 	}
 	if scored[0].score != 5 {
 		t.Fatalf("score = %d, want 5", scored[0].score)
+	}
+}
+
+func TestApplyRulesMatchesNormalizedCategoryAsTag(t *testing.T) {
+	itemID := uuid.New()
+	items := []models.FeedItem{
+		{
+			ID:          itemID,
+			Title:       "Нейросети в продуктах",
+			PublishedAt: time.Date(2026, 5, 19, 12, 0, 0, 0, time.UTC),
+			Categories:  []models.Category{{Name: "AI", Slug: "ai"}},
+		},
+	}
+	rules := []models.FilterRule{
+		{RuleType: models.RuleInclude, TargetType: models.TargetTag, Value: "ai", Weight: 7},
+	}
+
+	scored := applyRules(items, rules)
+
+	if len(scored) != 1 {
+		t.Fatalf("len(scored) = %d, want 1", len(scored))
+	}
+	if scored[0].item.ID != itemID {
+		t.Fatalf("matched item = %s, want %s", scored[0].item.ID, itemID)
+	}
+	if scored[0].score != 7 {
+		t.Fatalf("score = %d, want 7", scored[0].score)
 	}
 }
 

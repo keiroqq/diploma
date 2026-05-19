@@ -30,6 +30,7 @@ type ItemResponse struct {
 	Author      string    `json:"author"`
 	PublishedAt time.Time `json:"published_at"`
 	Tags        []string  `json:"tags"`
+	Categories  []string  `json:"categories"`
 	Score       int       `json:"score"`
 	IsSaved     bool      `json:"is_saved"`
 }

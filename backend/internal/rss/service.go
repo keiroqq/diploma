@@ -234,16 +234,16 @@ func (s *Service) createItemIfNew(tx *gorm.DB, item *models.FeedItem, tags []str
 			return false, err
 		}
 	}
+	if err := linkCategoriesForTags(tx, item.ID, tags); err != nil {
+		return false, err
+	}
 
 	return true, nil
 }
 
 func findOrCreateTag(tx *gorm.DB, name string) (*models.Tag, error) {
 	name = strings.TrimSpace(name)
-	tagSlug := slug.Make(name)
-	if tagSlug == "" {
-		tagSlug = slug.Make(strings.ToLower(name))
-	}
+	tagSlug := normalizeTagSlug(name)
 
 	var tag models.Tag
 	err := tx.Where("slug = ?", tagSlug).First(&tag).Error
@@ -268,6 +268,66 @@ func findOrCreateTag(tx *gorm.DB, name string) (*models.Tag, error) {
 		}
 	}
 	return &tag, nil
+}
+
+func linkCategoriesForTags(tx *gorm.DB, itemID uuid.UUID, tags []string) error {
+	slugs := make([]string, 0, len(tags))
+	seen := map[string]struct{}{}
+	for _, tagName := range tags {
+		tagSlug := normalizeTagSlug(tagName)
+		if tagSlug == "" {
+			continue
+		}
+		if _, ok := seen[tagSlug]; ok {
+			continue
+		}
+		seen[tagSlug] = struct{}{}
+		slugs = append(slugs, tagSlug)
+	}
+	if len(slugs) == 0 {
+		return nil
+	}
+
+	var aliases []models.TagAlias
+	if err := tx.
+		Where("raw_tag_slug IN ? AND provider IN ?", slugs, []string{"any", "habr"}).
+		Find(&aliases).Error; err != nil {
+		return err
+	}
+	categoryIDs := map[uuid.UUID]struct{}{}
+	for _, alias := range aliases {
+		categoryIDs[alias.CategoryID] = struct{}{}
+	}
+
+	categorySlugs := categorySlugsForTags(tags)
+	if len(categorySlugs) > 0 {
+		var categories []models.Category
+		if err := tx.Where("slug IN ?", categorySlugs).Find(&categories).Error; err != nil {
+			return err
+		}
+		for _, category := range categories {
+			categoryIDs[category.ID] = struct{}{}
+		}
+	}
+
+	for categoryID := range categoryIDs {
+		if err := tx.Exec(
+			"INSERT INTO feed_item_categories (item_id, category_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+			itemID,
+			categoryID,
+		).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func normalizeTagSlug(name string) string {
+	tagSlug := slug.Make(strings.TrimSpace(name))
+	if tagSlug == "" {
+		tagSlug = slug.Make(strings.ToLower(strings.TrimSpace(name)))
+	}
+	return tagSlug
 }
 
 func (s *Service) getAccessibleSource(ctx context.Context, sourceID uuid.UUID, userID uuid.UUID) (*models.Source, error) {
