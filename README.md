@@ -5,7 +5,7 @@ PWA/MVP для агрегации и персонализации текстов
 ## Стек
 
 - Backend: Go, chi, GORM, PostgreSQL, SQL-миграции, JWT, bcrypt, gofeed, slog.
-- Frontend: React, TypeScript, Vite, TanStack Query, Zustand, PWA. Будет добавлен после стабилизации backend.
+- Frontend: React, TypeScript, Vite, React Router, TanStack Query, Zustand, lucide-react.
 - Redis в MVP не используется.
 
 ## Структура
@@ -65,6 +65,23 @@ Swagger UI доступен после запуска backend:
 
 ```text
 http://localhost:8080/swagger/index.html
+```
+
+## Запуск frontend
+
+Первый MVP фронтенда находится в `frontend/` и по умолчанию обращается к API
+`http://localhost:8080`.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Vite dev server открывает приложение на:
+
+```text
+http://localhost:5173
 ```
 
 ## Основные endpoint'ы MVP
