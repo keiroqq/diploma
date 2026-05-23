@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Compass, Pencil, RefreshCw, Rss, Trash2 } from "lucide-react";
+import { ArrowRight, Compass, Pencil, Rss, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { deleteFeed, listFeeds, refreshFeed } from "../api/client";
+import { deleteFeed, listFeeds } from "../api/client";
 import type { Feed } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -19,14 +19,6 @@ export function FeedsPage() {
   const feedsQuery = useQuery({
     queryKey: ["feeds"],
     queryFn: listFeeds
-  });
-
-  const refreshMutation = useMutation({
-    mutationFn: refreshFeed,
-    onSuccess: (_, feedId) => {
-      queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
-      queryClient.invalidateQueries({ queryKey: ["saved"] });
-    }
   });
 
   const deleteMutation = useMutation({
@@ -79,12 +71,6 @@ export function FeedsPage() {
         </button>
       </div>
 
-      {refreshMutation.isError ? (
-        <ErrorState
-          title="Не удалось обновить ленту"
-          message={errorMessage(refreshMutation.error)}
-        />
-      ) : null}
       {deleteMutation.isError ? (
         <ErrorState
           title="Не удалось удалить ленту"
@@ -93,70 +79,55 @@ export function FeedsPage() {
       ) : null}
 
       <div className="feed-grid">
-        {feeds.map((feed) => {
-          const isRefreshing =
-            refreshMutation.isPending && refreshMutation.variables === feed.id;
-
-          return (
-            <article className="feed-card" key={feed.id}>
-              <div className="feed-card-main">
-                <span
-                  className="feed-card-icon"
-                  style={{ backgroundColor: feed.theme_color || "#2563eb" }}
-                >
-                  <Rss size={19} aria-hidden />
-                </span>
-                <div>
-                  <h2>{feed.name}</h2>
-                  <p>{feed.description || "Персональный поток материалов"}</p>
-                </div>
+        {feeds.map((feed) => (
+          <article className="feed-card" key={feed.id}>
+            <div className="feed-card-main">
+              <span
+                className="feed-card-icon"
+                style={{ backgroundColor: feed.theme_color || "#2563eb" }}
+              >
+                <Rss size={19} aria-hidden />
+              </span>
+              <div>
+                <h2>{feed.name}</h2>
+                <p>{feed.description || "Персональный поток материалов"}</p>
               </div>
-              <div className="feed-card-actions">
-                <button
-                  className="secondary-button compact"
-                  type="button"
-                  onClick={() => setEditingFeed(feed)}
-                >
-                  <Pencil size={17} aria-hidden />
-                  Изменить
-                </button>
-                <button
-                  className="secondary-button compact danger-action"
-                  type="button"
-                  title="Удалить"
-                  aria-label={`Удалить ${feed.name}`}
-                  disabled={deleteMutation.isPending}
-                  onClick={() => {
-                    if (window.confirm(`Удалить поток "${feed.name}"?`)) {
-                      deleteMutation.mutate(feed.id);
-                    }
-                  }}
-                >
-                  <Trash2 size={18} aria-hidden />
-                  Удалить
-                </button>
-                <button
-                  className="icon-button"
-                  type="button"
-                  title="Обновить"
-                  aria-label={`Обновить ${feed.name}`}
-                  disabled={isRefreshing}
-                  onClick={() => refreshMutation.mutate(feed.id)}
-                >
-                  <RefreshCw size={18} aria-hidden className={isRefreshing ? "spin" : ""} />
-                </button>
-                <button
-                  className="secondary-button compact"
-                  type="button"
-                  onClick={() => navigate(`/feeds/${feed.id}`)}
-                >
-                  Открыть
-                  <ArrowRight size={17} aria-hidden />
-                </button>
-              </div>
-            </article>
-          );
-        })}
+            </div>
+            <div className="feed-card-actions">
+              <button
+                className="icon-button"
+                type="button"
+                title="Изменить"
+                aria-label={`Изменить ${feed.name}`}
+                onClick={() => setEditingFeed(feed)}
+              >
+                <Pencil size={17} aria-hidden />
+              </button>
+              <button
+                className="icon-button danger-button"
+                type="button"
+                title="Удалить"
+                aria-label={`Удалить ${feed.name}`}
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Удалить поток "${feed.name}"?`)) {
+                    deleteMutation.mutate(feed.id);
+                  }
+                }}
+              >
+                <Trash2 size={18} aria-hidden />
+              </button>
+              <button
+                className="secondary-button compact"
+                type="button"
+                onClick={() => navigate(`/feeds/${feed.id}`)}
+              >
+                Открыть
+                <ArrowRight size={17} aria-hidden />
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );

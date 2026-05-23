@@ -129,7 +129,7 @@ img {
 .app-main {
   width: min(100%, 1040px);
   margin: 0 auto;
-  padding: calc(var(--topbar-offset) + 18px) 16px 40px;
+  padding: calc(var(--topbar-offset) + 10px) 16px 40px;
 }
 
 .icon-button,
@@ -289,7 +289,65 @@ img {
   position: relative;
   display: grid;
   gap: 10px;
-  padding: 0 14px 12px;
+  padding: 11px 14px 8px;
+}
+
+.feed-scroll-track {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 8px;
+  cursor: default;
+  touch-action: none;
+}
+
+.feed-scroll-track::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border);
+  content: "";
+}
+
+.feed-scroll-track.active {
+  cursor: pointer;
+}
+
+.feed-scroll-thumb {
+  position: absolute;
+  top: 0;
+  height: 8px;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.feed-scroll-track.active .feed-scroll-thumb {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.feed-scroll-track.dragging .feed-scroll-thumb {
+  cursor: grabbing;
+}
+
+.feed-scroll-thumb::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
 }
 
 .feed-toolbar-row {
@@ -303,6 +361,39 @@ img {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.feed-strip-frame {
+  position: relative;
+  min-width: 0;
+}
+
+.feed-strip-frame::before,
+.feed-strip-frame::after {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: 52px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  content: "";
+}
+
+.feed-strip-frame::before {
+  left: 0;
+  background: linear-gradient(to right, var(--surface) 18%, transparent);
+}
+
+.feed-strip-frame::after {
+  right: 0;
+  background: linear-gradient(to left, var(--surface) 18%, transparent);
+}
+
+.feed-strip-frame.can-scroll-left::before,
+.feed-strip-frame.can-scroll-right::after {
+  opacity: 1;
 }
 
 .feed-strip {
@@ -319,11 +410,58 @@ img {
   display: none;
 }
 
+.feed-strip-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    opacity 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.feed-strip-arrow:hover:not(:disabled),
+.feed-strip-arrow:focus-visible {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.feed-strip-arrow:disabled {
+  cursor: default;
+}
+
+.feed-strip-arrow-left {
+  left: 3px;
+}
+
+.feed-strip-arrow-right {
+  right: 3px;
+}
+
+.feed-strip-frame.can-scroll-left .feed-strip-arrow-left,
+.feed-strip-frame.can-scroll-right .feed-strip-arrow-right {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .feed-pill {
   display: inline-flex;
   align-items: center;
-  min-width: fit-content;
-  max-width: 220px;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: clamp(116px, 18vw, 168px);
   min-height: 38px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -332,6 +470,12 @@ img {
   font-size: 14px;
   font-weight: 800;
   padding: 0 14px;
+}
+
+.feed-pill-label {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -738,13 +882,47 @@ img {
   gap: 14px;
 }
 
+.feed-heading {
+  display: block;
+}
+
+.feed-heading-content {
+  min-width: 0;
+}
+
+.feed-heading-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin-bottom: 4px;
+}
+
+.feed-heading-meta .eyebrow {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .feed-heading-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-direction: row;
+  gap: 2px;
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.feed-heading-actions .icon-button {
+  width: 36px;
+  height: 36px;
 }
 
 .section-heading h1,
@@ -1461,7 +1639,7 @@ img {
   }
 
   .app-main {
-    padding: calc(var(--topbar-offset) + 12px) 10px 28px;
+    padding: calc(var(--topbar-offset) + 8px) 10px 28px;
   }
 
   .section-heading {
@@ -1474,8 +1652,13 @@ img {
     align-self: flex-start;
   }
 
+  .feed-heading {
+    display: block;
+  }
+
   .feed-heading-actions {
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
   }
 
   .feed-card {

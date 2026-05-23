@@ -1,10 +1,20 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type WheelEvent
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark,
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Compass,
   Filter,
   LogOut,
@@ -52,13 +62,24 @@ export function AppShell() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dateFromInputRef = useRef<HTMLInputElement>(null);
   const dateToInputRef = useRef<HTMLInputElement>(null);
+  const feedStripRef = useRef<HTMLDivElement>(null);
+  const feedScrollTrackRef = useRef<HTMLDivElement>(null);
   const feedPillRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const feedScrollHoldRef = useRef<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [draftDateFrom, setDraftDateFrom] = useState("");
   const [draftDateTo, setDraftDateTo] = useState("");
   const [draftCategories, setDraftCategories] = useState<string[]>([]);
+  const [feedStripDragging, setFeedStripDragging] = useState(false);
+  const [feedStripScroll, setFeedStripScroll] = useState({
+    canScroll: false,
+    canScrollLeft: false,
+    canScrollRight: false,
+    progress: 0,
+    thumbWidth: 100
+  });
 
   const feedsQuery = useQuery({
     queryKey: ["feeds"],
@@ -92,7 +113,7 @@ export function AppShell() {
   const selectedCategories = getSelectedCategorySlugs(searchParams);
   const categories = categoriesQuery.data ?? [];
   const categoryLabel = categoryFilterLabel(categories, selectedCategories);
-  const headerOffset = isFeedRoute ? "126px" : "64px";
+  const headerOffset = isFeedRoute ? "132px" : "64px";
   const popoverOpen = dateMenuOpen || categoryMenuOpen;
 
   const pageTitle = useMemo(() => {
@@ -147,8 +168,33 @@ export function AppShell() {
         block: "nearest",
         inline: "center"
       });
+      window.requestAnimationFrame(updateFeedStripScrollState);
     }
   }, [feedId, feedsQuery.data?.length]);
+
+  useEffect(() => {
+    if (!isFeedRoute) {
+      return;
+    }
+
+    const feedStrip = feedStripRef.current;
+    if (!feedStrip) {
+      return;
+    }
+
+    const update = () => updateFeedStripScrollState();
+    update();
+    feedStrip.addEventListener("scroll", update, { passive: true });
+
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(feedStrip);
+
+    return () => {
+      feedStrip.removeEventListener("scroll", update);
+      resizeObserver.disconnect();
+      stopFeedStripHold();
+    };
+  }, [isFeedRoute, feedsQuery.data?.length]);
 
   function handleLogout() {
     queryClient.clear();
@@ -226,6 +272,118 @@ export function AppShell() {
   function closeFilterPopovers() {
     setDateMenuOpen(false);
     setCategoryMenuOpen(false);
+  }
+
+  function updateFeedStripScrollState() {
+    const feedStrip = feedStripRef.current;
+    if (!feedStrip) {
+      return;
+    }
+
+    const maxScroll = feedStrip.scrollWidth - feedStrip.clientWidth;
+    const canScroll = maxScroll > 1;
+    const progress = canScroll ? feedStrip.scrollLeft / maxScroll : 0;
+    const thumbWidth = canScroll
+      ? Math.max(12, (feedStrip.clientWidth / feedStrip.scrollWidth) * 100)
+      : 100;
+
+    setFeedStripScroll({
+      canScroll,
+      canScrollLeft: feedStrip.scrollLeft > 1,
+      canScrollRight: canScroll && feedStrip.scrollLeft < maxScroll - 1,
+      progress,
+      thumbWidth
+    });
+  }
+
+  function scrollFeedStrip(direction: -1 | 1, distance = 120) {
+    const feedStrip = feedStripRef.current;
+    if (!feedStrip) {
+      return;
+    }
+
+    feedStrip.scrollBy({ left: direction * distance, behavior: "auto" });
+    window.requestAnimationFrame(updateFeedStripScrollState);
+  }
+
+  function startFeedStripHold(direction: -1 | 1) {
+    stopFeedStripHold();
+    scrollFeedStrip(direction, 148);
+    feedScrollHoldRef.current = window.setInterval(() => {
+      scrollFeedStrip(direction, 44);
+    }, 55);
+  }
+
+  function stopFeedStripHold() {
+    if (feedScrollHoldRef.current !== null) {
+      window.clearInterval(feedScrollHoldRef.current);
+      feedScrollHoldRef.current = null;
+    }
+  }
+
+  function scrollFeedStripToPointer(clientX: number) {
+    const track = feedScrollTrackRef.current;
+    const feedStrip = feedStripRef.current;
+    if (!track || !feedStrip || !feedStripScroll.canScroll) {
+      return;
+    }
+
+    const trackRect = track.getBoundingClientRect();
+    const thumbWidth = (feedStripScroll.thumbWidth / 100) * trackRect.width;
+    const availableWidth = trackRect.width - thumbWidth;
+    if (availableWidth <= 0) {
+      return;
+    }
+
+    const rawLeft = clientX - trackRect.left - thumbWidth / 2;
+    const progress = Math.min(1, Math.max(0, rawLeft / availableWidth));
+    feedStrip.scrollLeft = progress * (feedStrip.scrollWidth - feedStrip.clientWidth);
+    updateFeedStripScrollState();
+  }
+
+  function handleFeedScrollTrackPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!feedStripScroll.canScroll) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setFeedStripDragging(true);
+    scrollFeedStripToPointer(event.clientX);
+  }
+
+  function handleFeedScrollTrackPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!feedStripDragging) {
+      return;
+    }
+
+    event.preventDefault();
+    scrollFeedStripToPointer(event.clientX);
+  }
+
+  function handleFeedScrollTrackPointerEnd(event: PointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setFeedStripDragging(false);
+  }
+
+  function handleFeedStripWheel(event: WheelEvent<HTMLDivElement>) {
+    const feedStrip = feedStripRef.current;
+    if (!feedStrip || !feedStripScroll.canScroll) {
+      return;
+    }
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      ? event.deltaX
+      : event.deltaY;
+    if (delta === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    feedStrip.scrollLeft += delta;
+    updateFeedStripScrollState();
   }
 
   function openDatePicker(input: HTMLInputElement | null) {
@@ -351,6 +509,26 @@ export function AppShell() {
 
         {isFeedRoute ? (
           <div className="feed-toolbar">
+            <div
+              className={`feed-scroll-track ${feedStripScroll.canScroll ? "active" : ""} ${feedStripDragging ? "dragging" : ""}`}
+              ref={feedScrollTrackRef}
+              aria-hidden={!feedStripScroll.canScroll}
+              onPointerDown={handleFeedScrollTrackPointerDown}
+              onPointerMove={handleFeedScrollTrackPointerMove}
+              onPointerUp={handleFeedScrollTrackPointerEnd}
+              onPointerCancel={handleFeedScrollTrackPointerEnd}
+            >
+              <button
+                className="feed-scroll-thumb"
+                type="button"
+                tabIndex={-1}
+                style={{
+                  left: `${feedStripScroll.progress * (100 - feedStripScroll.thumbWidth)}%`,
+                  width: `${feedStripScroll.thumbWidth}%`
+                }}
+                aria-label="Прокрутка потоков"
+              />
+            </div>
             <div className="feed-toolbar-row">
               <button
                 className={`icon-button filter-toggle ${filtersOpen ? "active" : ""}`}
@@ -362,21 +540,66 @@ export function AppShell() {
               >
                 <Filter size={19} aria-hidden />
               </button>
-              <div className="feed-strip" aria-label="Быстрое переключение потоков">
-                {(feedsQuery.data ?? []).map((feed) => (
-                  <NavLink
-                    className={({ isActive }) =>
-                      `feed-pill ${isActive ? "active" : ""}`
-                    }
-                    key={feed.id}
-                    ref={(node) => {
-                      feedPillRefs.current[feed.id] = node;
-                    }}
-                    to={`/feeds/${feed.id}${location.search}`}
-                  >
-                    {feed.name}
-                  </NavLink>
-                ))}
+              <div
+                className={`feed-strip-frame ${feedStripScroll.canScrollLeft ? "can-scroll-left" : ""} ${feedStripScroll.canScrollRight ? "can-scroll-right" : ""}`}
+              >
+                <button
+                  className="feed-strip-arrow feed-strip-arrow-left"
+                  type="button"
+                  title="Назад"
+                  aria-label="Прокрутить потоки назад"
+                  disabled={!feedStripScroll.canScrollLeft}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    startFeedStripHold(-1);
+                  }}
+                  onPointerUp={stopFeedStripHold}
+                  onPointerCancel={stopFeedStripHold}
+                  onPointerLeave={stopFeedStripHold}
+                  onClick={(event) => event.preventDefault()}
+                >
+                  <ChevronLeft size={17} aria-hidden />
+                </button>
+
+                <div
+                  className="feed-strip"
+                  ref={feedStripRef}
+                  aria-label="Быстрое переключение потоков"
+                  onWheel={handleFeedStripWheel}
+                >
+                  {(feedsQuery.data ?? []).map((feed) => (
+                    <NavLink
+                      className={({ isActive }) =>
+                        `feed-pill ${isActive ? "active" : ""}`
+                      }
+                      key={feed.id}
+                      ref={(node) => {
+                        feedPillRefs.current[feed.id] = node;
+                      }}
+                      to={`/feeds/${feed.id}${location.search}`}
+                    >
+                      <span className="feed-pill-label">{feed.name}</span>
+                    </NavLink>
+                  ))}
+                </div>
+
+                <button
+                  className="feed-strip-arrow feed-strip-arrow-right"
+                  type="button"
+                  title="Вперед"
+                  aria-label="Прокрутить потоки вперед"
+                  disabled={!feedStripScroll.canScrollRight}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    startFeedStripHold(1);
+                  }}
+                  onPointerUp={stopFeedStripHold}
+                  onPointerCancel={stopFeedStripHold}
+                  onPointerLeave={stopFeedStripHold}
+                  onClick={(event) => event.preventDefault()}
+                >
+                  <ChevronRight size={17} aria-hidden />
+                </button>
               </div>
             </div>
 

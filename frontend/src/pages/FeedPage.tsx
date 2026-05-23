@@ -106,42 +106,48 @@ export function FeedPage() {
       />
 
       <div className="section-heading feed-heading">
-        <div>
-          <p className="eyebrow">{dateFilter.label}</p>
+        <div className="feed-heading-content">
+          <div className="feed-heading-meta">
+            <p className="eyebrow">{dateFilter.label}</p>
+            <div className="feed-heading-actions">
+              <button
+                className="icon-button"
+                type="button"
+                title="Изменить"
+                aria-label={`Изменить ${feedName}`}
+                onClick={() => setEditingOpen(true)}
+              >
+                <Pencil size={17} aria-hidden />
+              </button>
+              <button
+                className="icon-button danger-button"
+                type="button"
+                title="Удалить"
+                aria-label={`Удалить ${feedName}`}
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Удалить поток "${feedName}"?`)) {
+                    deleteMutation.mutate();
+                  }
+                }}
+              >
+                <Trash2 size={17} aria-hidden />
+              </button>
+              <button
+                className="icon-button"
+                type="button"
+                title="Обновить"
+                aria-label={`Обновить ${feedName}`}
+                disabled={refreshMutation.isPending}
+                onClick={() => refreshMutation.mutate()}
+              >
+                <RefreshCw size={17} aria-hidden className={refreshMutation.isPending ? "spin" : ""} />
+              </button>
+            </div>
+          </div>
+
           <h1>{feedName}</h1>
           {feed?.description ? <p>{feed.description}</p> : null}
-        </div>
-        <div className="feed-heading-actions">
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => setEditingOpen(true)}
-          >
-            <Pencil size={17} aria-hidden />
-            Изменить
-          </button>
-          <button
-            className="secondary-button danger-action"
-            type="button"
-            disabled={deleteMutation.isPending}
-            onClick={() => {
-              if (window.confirm(`Удалить поток "${feedName}"?`)) {
-                deleteMutation.mutate();
-              }
-            }}
-          >
-            <Trash2 size={17} aria-hidden />
-            {deleteMutation.isPending ? "Удаляем" : "Удалить"}
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            disabled={refreshMutation.isPending}
-            onClick={() => refreshMutation.mutate()}
-          >
-            <RefreshCw size={17} aria-hidden className={refreshMutation.isPending ? "spin" : ""} />
-            {refreshMutation.isPending ? "Обновляем" : "Обновить"}
-          </button>
         </div>
       </div>
 
