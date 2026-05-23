@@ -29,11 +29,15 @@ func (r *Repository) FeedExistsForUser(ctx context.Context, feedID uuid.UUID, us
 
 func (r *Repository) FindUserSourceByCatalogPage(ctx context.Context, userID uuid.UUID, pageURL string) (*models.Source, error) {
 	var source models.Source
-	err := r.db.WithContext(ctx).
+	result := r.db.WithContext(ctx).
 		Where("created_by = ? AND url = ?", userID, pageURL).
-		First(&source).Error
-	if err != nil {
-		return nil, err
+		Limit(1).
+		Find(&source)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return &source, nil
 }
