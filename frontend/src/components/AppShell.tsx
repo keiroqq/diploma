@@ -45,12 +45,13 @@ export function AppShell() {
   const drawerOpen = useUiStore((state) => state.drawerOpen);
   const searchOpen = useUiStore((state) => state.searchOpen);
   const searchQuery = useUiStore((state) => state.searchQuery);
-  const toggleDrawer = useUiStore((state) => state.toggleDrawer);
   const setDrawerOpen = useUiStore((state) => state.setDrawerOpen);
   const setSearchOpen = useUiStore((state) => state.setSearchOpen);
   const setSearchQuery = useUiStore((state) => state.setSearchQuery);
   const closeSearch = useUiStore((state) => state.closeSearch);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dateFromInputRef = useRef<HTMLInputElement>(null);
+  const dateToInputRef = useRef<HTMLInputElement>(null);
   const feedPillRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
@@ -91,7 +92,8 @@ export function AppShell() {
   const selectedCategories = getSelectedCategorySlugs(searchParams);
   const categories = categoriesQuery.data ?? [];
   const categoryLabel = categoryFilterLabel(categories, selectedCategories);
-  const headerOffset = isFeedRoute ? (filtersOpen ? "250px" : "126px") : "64px";
+  const headerOffset = isFeedRoute ? "126px" : "64px";
+  const popoverOpen = dateMenuOpen || categoryMenuOpen;
 
   const pageTitle = useMemo(() => {
     if (location.pathname === "/catalog") {
@@ -158,6 +160,12 @@ export function AppShell() {
     setDrawerOpen(false);
   }
 
+  function openDrawer() {
+    setFiltersOpen(false);
+    closeFilterPopovers();
+    setDrawerOpen(true);
+  }
+
   function updateFilterParams(mutator: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams);
     mutator(next);
@@ -215,20 +223,84 @@ export function AppShell() {
     setCategoryMenuOpen(false);
   }
 
+  function closeFilterPopovers() {
+    setDateMenuOpen(false);
+    setCategoryMenuOpen(false);
+  }
+
+  function openDatePicker(input: HTMLInputElement | null) {
+    if (!input) {
+      return;
+    }
+
+    const dateInput = input as HTMLInputElement & { showPicker?: () => void };
+
+    if (dateInput.showPicker) {
+      try {
+        dateInput.showPicker();
+        return;
+      } catch {
+        dateInput.focus();
+        return;
+      }
+    }
+
+    dateInput.focus();
+  }
+
+  function closePopoverFromHeaderClick(event: React.MouseEvent<HTMLElement>) {
+    if (!popoverOpen) {
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+    if (target.closest(".filter-popover")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    closeFilterPopovers();
+  }
+
   const shellStyle = {
     "--topbar-offset": headerOffset
   } as CSSProperties;
 
   return (
     <div className="app-shell" style={shellStyle}>
-      <header className={`topbar ${isFeedRoute ? "with-feed-tools" : ""}`}>
+      {popoverOpen ? (
+        <button
+          className="filter-popover-backdrop"
+          type="button"
+          aria-label="Закрыть меню фильтра"
+          onPointerDown={(event) => {
+            event.preventDefault();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeFilterPopovers();
+          }}
+        />
+      ) : null}
+      <header
+        className={`topbar ${isFeedRoute ? "with-feed-tools" : ""}`}
+        onClickCapture={closePopoverFromHeaderClick}
+      >
         <div className="topbar-main">
           <button
             className="icon-button"
             type="button"
             title="Открыть меню"
             aria-label="Открыть меню"
-            onClick={toggleDrawer}
+            onClick={() => {
+              if (drawerOpen) {
+                setDrawerOpen(false);
+              } else {
+                openDrawer();
+              }
+            }}
           >
             <Menu size={22} aria-hidden />
           </button>
@@ -300,7 +372,10 @@ export function AppShell() {
             </div>
 
             {filtersOpen ? (
-              <div className="filter-panel" aria-label="Фильтры ленты">
+              <div
+                className="filter-panel"
+                aria-label="Фильтры ленты"
+              >
                 <div className="filter-row">
                   <span className="filter-row-label">Диапазон дат</span>
                   <div className="filter-control">
@@ -317,7 +392,7 @@ export function AppShell() {
                       <ChevronDown size={16} aria-hidden />
                     </button>
                     {dateMenuOpen ? (
-                      <div className="filter-popover date-popover">
+                      <div className="filter-popover date-popover" role="menu">
                         <button type="button" onClick={() => applyDatePreset("today")}>
                           Сегодня
                         </button>
@@ -333,22 +408,44 @@ export function AppShell() {
                         <div className="date-input-grid">
                           <label>
                             С
-                            <input
-                              type="date"
-                              value={draftDateFrom}
-                              max={draftDateTo || undefined}
-                              onChange={(event) => setDraftDateFrom(event.target.value)}
-                            />
+                            <button
+                              className="date-input-button"
+                              type="button"
+                              onClick={() => openDatePicker(dateFromInputRef.current)}
+                            >
+                              {draftDateFrom || "дд . мм . гггг"}
+                              <CalendarDays size={16} aria-hidden />
+                            </button>
+                            <span className="date-native-holder">
+                              <input
+                                ref={dateFromInputRef}
+                                type="date"
+                                value={draftDateFrom}
+                                max={draftDateTo || undefined}
+                                onChange={(event) => setDraftDateFrom(event.target.value)}
+                              />
+                            </span>
                           </label>
                           <label>
                             По
-                            <input
-                              type="date"
-                              value={draftDateTo}
-                              min={draftDateFrom || undefined}
-                              max={localDateString(new Date())}
-                              onChange={(event) => setDraftDateTo(event.target.value)}
-                            />
+                            <button
+                              className="date-input-button"
+                              type="button"
+                              onClick={() => openDatePicker(dateToInputRef.current)}
+                            >
+                              {draftDateTo || "дд . мм . гггг"}
+                              <CalendarDays size={16} aria-hidden />
+                            </button>
+                            <span className="date-native-holder">
+                              <input
+                                ref={dateToInputRef}
+                                type="date"
+                                value={draftDateTo}
+                                min={draftDateFrom || undefined}
+                                max={localDateString(new Date())}
+                                onChange={(event) => setDraftDateTo(event.target.value)}
+                              />
+                            </span>
                           </label>
                         </div>
                         <button
@@ -379,7 +476,7 @@ export function AppShell() {
                       <ChevronDown size={16} aria-hidden />
                     </button>
                     {categoryMenuOpen ? (
-                      <div className="filter-popover category-popover">
+                      <div className="filter-popover category-popover" role="menu">
                         <div className="category-options">
                           {categories.map((category) => (
                             <label className="checkbox-row" key={category.id}>

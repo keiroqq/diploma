@@ -94,7 +94,7 @@ img {
 
 .topbar {
   position: fixed;
-  z-index: 40;
+  z-index: 90;
   top: 0;
   right: 0;
   left: 0;
@@ -264,6 +264,7 @@ img {
 }
 
 .feed-toolbar {
+  position: relative;
   display: grid;
   gap: 10px;
   padding: 0 14px 12px;
@@ -323,13 +324,18 @@ img {
 }
 
 .filter-panel {
+  position: absolute;
+  z-index: 92;
+  top: calc(100% + 8px);
+  left: 14px;
+  width: min(720px, calc(100vw - 28px));
   display: grid;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 8px 24px rgb(15 23 42 / 8%);
+  box-shadow: var(--shadow);
 }
 
 .filter-row {
@@ -358,7 +364,7 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  width: min(100%, 560px);
+  width: 100%;
   min-height: 38px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -382,7 +388,7 @@ img {
 
 .filter-popover {
   position: absolute;
-  z-index: 70;
+  z-index: 94;
   top: calc(100% + 8px);
   left: 0;
   display: grid;
@@ -393,6 +399,17 @@ img {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.filter-popover-backdrop {
+  position: fixed;
+  z-index: 89;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  cursor: default;
 }
 
 .filter-popover > button:not(.primary-button) {
@@ -441,14 +458,41 @@ img {
   font-weight: 800;
 }
 
-.date-input-grid input {
+.date-native-holder {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.date-native-holder input {
+  width: 1px;
+  height: 1px;
+}
+
+.date-input-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
   min-height: 38px;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  cursor: pointer;
   padding: 0 9px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.date-input-button:hover,
+.date-input-button:focus-visible {
+  border-color: var(--accent);
 }
 
 .category-popover {
@@ -1218,12 +1262,15 @@ img {
 .chip-row {
   flex-wrap: wrap;
   gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  max-width: 150px;
+  max-width: 100%;
+  min-width: 0;
   min-height: 24px;
   border-radius: 999px;
   font-size: 12px;
@@ -1268,6 +1315,11 @@ img {
   .feed-toolbar {
     padding-right: 10px;
     padding-left: 10px;
+  }
+
+  .filter-panel {
+    left: 10px;
+    width: calc(100vw - 20px);
   }
 
   .app-main {
@@ -1338,7 +1390,7 @@ img {
   }
 
   .chip {
-    max-width: 112px;
+    max-width: 100%;
   }
 }
 
