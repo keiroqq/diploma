@@ -6,8 +6,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/keiro/content-digest/backend/internal/auth"
+	"github.com/keiro/content-digest/backend/internal/catalog"
+	"github.com/keiro/content-digest/backend/internal/categories"
 	"github.com/keiro/content-digest/backend/internal/feeds"
 	"github.com/keiro/content-digest/backend/internal/filters"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
@@ -17,11 +20,13 @@ import (
 )
 
 type routerHandlers struct {
-	Auth    *auth.Handler
-	Feeds   *feeds.Handler
-	Sources *sources.Handler
-	Items   *items.Handler
-	Filters *filters.Handler
+	Auth       *auth.Handler
+	Catalog    *catalog.Handler
+	Categories *categories.Handler
+	Feeds      *feeds.Handler
+	Sources    *sources.Handler
+	Items      *items.Handler
+	Filters    *filters.Handler
 }
 
 func newRouter(logger *slog.Logger, handlers routerHandlers, jwtSecret string) http.Handler {
@@ -35,6 +40,9 @@ func newRouter(logger *slog.Logger, handlers routerHandlers, jwtSecret string) h
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	authMiddleware := middleware.RequireAuth(jwtSecret, logger)
 	r.Route("/api", func(r chi.Router) {
@@ -46,6 +54,8 @@ func newRouter(logger *slog.Logger, handlers routerHandlers, jwtSecret string) h
 
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware)
+			handlers.Catalog.RegisterRoutes(r)
+			handlers.Categories.RegisterRoutes(r)
 			handlers.Feeds.RegisterRoutes(r)
 			handlers.Sources.RegisterRoutes(r)
 			handlers.Items.RegisterRoutes(r)

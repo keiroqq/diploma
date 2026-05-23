@@ -27,6 +27,18 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Delete("/feeds/{id}/rules/{ruleId}", h.Delete)
 }
 
+// List godoc
+// @Summary Получить правила фильтрации ленты
+// @Tags filter-rules
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Success 200 {array} RuleResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/rules [get]
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -44,6 +56,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Create godoc
+// @Summary Создать правило фильтрации
+// @Tags filter-rules
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Param payload body CreateRuleRequest true "Данные правила"
+// @Success 201 {object} RuleResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/rules [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -68,6 +94,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, resp)
 }
 
+// Update godoc
+// @Summary Обновить правило фильтрации
+// @Tags filter-rules
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Param ruleId path string true "Rule ID"
+// @Param payload body UpdateRuleRequest true "Данные правила"
+// @Success 200 {object} RuleResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/rules/{ruleId} [put]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -92,6 +133,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Delete godoc
+// @Summary Удалить правило фильтрации
+// @Tags filter-rules
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Param ruleId path string true "Rule ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/rules/{ruleId} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {

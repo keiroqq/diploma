@@ -18,6 +18,18 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// Register godoc
+// @Summary Зарегистрировать пользователя
+// @Description Создает пользователя и возвращает JWT.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body RegisterRequest true "Данные регистрации"
+// @Success 201 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -34,6 +46,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusCreated, resp)
 }
 
+// Login godoc
+// @Summary Войти в приложение
+// @Description Проверяет email и пароль, возвращает JWT.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body LoginRequest true "Данные входа"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -50,6 +74,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
+// Me godoc
+// @Summary Получить текущего пользователя
+// @Tags auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} UserResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/auth/me [get]
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {

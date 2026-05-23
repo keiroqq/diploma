@@ -37,15 +37,29 @@ func (r *Repository) ListCandidates(ctx context.Context, feedID uuid.UUID, userI
 		Joins("JOIN feeds ON feeds.id = feed_sources.feed_id").
 		Preload("Source").
 		Preload("Tags").
+		Preload("Categories").
 		Where("feed_sources.feed_id = ? AND feeds.user_id = ? AND feed_sources.is_enabled = true", feedID, userID)
 
-	if query.Mode == ModeToday {
+	if query.DateFrom != nil || query.DateTo != nil {
+		if query.DateFrom != nil {
+			db = db.Where("feed_items.published_at >= ?", *query.DateFrom)
+		}
+		if query.DateTo != nil {
+			db = db.Where("feed_items.published_at < ?", *query.DateTo)
+		}
+	} else if query.Mode == ModeToday {
 		db = db.Where("feed_items.published_at >= ?", startOfToday)
-	} else {
+	} else if query.Mode == ModeArchive {
 		db = db.Where("feed_items.published_at < ?", startOfToday)
 		if query.Cursor != nil {
 			db = db.Where("feed_items.published_at < ?", *query.Cursor)
 		}
+	}
+	if len(query.Categories) > 0 {
+		db = db.
+			Joins("JOIN feed_item_categories ON feed_item_categories.item_id = feed_items.id").
+			Joins("JOIN categories ON categories.id = feed_item_categories.category_id").
+			Where("categories.slug IN ?", query.Categories)
 	}
 
 	var records []models.FeedItem
@@ -108,6 +122,7 @@ func (r *Repository) ListSaved(ctx context.Context, userID uuid.UUID, limit int)
 	err := r.db.WithContext(ctx).
 		Preload("Item.Source").
 		Preload("Item.Tags").
+		Preload("Item.Categories").
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).

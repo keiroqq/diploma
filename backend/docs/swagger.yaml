@@ -1,0 +1,1739 @@
+basePath: /
+definitions:
+  auth.AuthResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.RegisterRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      username:
+        maxLength: 120
+        minLength: 2
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  auth.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  catalog.CatalogSource:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      page_url:
+        type: string
+      provider:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    type: object
+  catalog.ConnectCatalogSourcesRequest:
+    properties:
+      source_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  catalog.ConnectCatalogSourcesResponse:
+    properties:
+      connected:
+        items:
+          $ref: '#/definitions/catalog.ConnectedCatalogSource'
+        type: array
+    type: object
+  catalog.ConnectedCatalogSource:
+    properties:
+      catalog_source_id:
+        type: string
+      created_at:
+        type: string
+      feed_source_id:
+        type: string
+      feed_url:
+        type: string
+      page_url:
+        type: string
+      source_id:
+        type: string
+      title:
+        type: string
+    type: object
+  catalog.DiscoverRequest:
+    properties:
+      page_url:
+        type: string
+    type: object
+  catalog.DiscoverResponse:
+    properties:
+      feed_url:
+        type: string
+      page_url:
+        type: string
+      title:
+        type: string
+    type: object
+  catalog.Topic:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      sources:
+        items:
+          $ref: '#/definitions/catalog.CatalogSource'
+        type: array
+      title:
+        type: string
+    type: object
+  categories.CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  feeds.AddSourceRequest:
+    properties:
+      priority:
+        type: integer
+      source_id:
+        type: string
+    required:
+    - source_id
+    type: object
+  feeds.CreateFeedRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      icon:
+        maxLength: 64
+        type: string
+      is_default:
+        type: boolean
+      layout_type:
+        maxLength: 32
+        type: string
+      name:
+        maxLength: 120
+        minLength: 2
+        type: string
+      theme_color:
+        maxLength: 32
+        type: string
+    required:
+    - name
+    type: object
+  feeds.FeedResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      is_default:
+        type: boolean
+      layout_type:
+        type: string
+      name:
+        type: string
+      theme_color:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  feeds.FeedSourceResponse:
+    properties:
+      created_at:
+        type: string
+      feed_id:
+        type: string
+      id:
+        type: string
+      is_enabled:
+        type: boolean
+      priority:
+        type: integer
+      source_id:
+        type: string
+    type: object
+  feeds.UpdateFeedRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      icon:
+        maxLength: 64
+        type: string
+      is_default:
+        type: boolean
+      layout_type:
+        maxLength: 32
+        type: string
+      name:
+        maxLength: 120
+        minLength: 2
+        type: string
+      theme_color:
+        maxLength: 32
+        type: string
+    required:
+    - name
+    type: object
+  filters.CreateRuleRequest:
+    properties:
+      is_active:
+        type: boolean
+      rule_type:
+        enum:
+        - include
+        - exclude
+        - boost
+        - downrank
+        type: string
+      target_type:
+        enum:
+        - keyword
+        - tag
+        - source
+        - author
+        type: string
+      value:
+        maxLength: 255
+        type: string
+      weight:
+        type: integer
+    required:
+    - rule_type
+    - target_type
+    - value
+    type: object
+  filters.RuleResponse:
+    properties:
+      created_at:
+        type: string
+      feed_id:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      rule_type:
+        type: string
+      target_type:
+        type: string
+      updated_at:
+        type: string
+      value:
+        type: string
+      weight:
+        type: integer
+    type: object
+  filters.UpdateRuleRequest:
+    properties:
+      is_active:
+        type: boolean
+      rule_type:
+        enum:
+        - include
+        - exclude
+        - boost
+        - downrank
+        type: string
+      target_type:
+        enum:
+        - keyword
+        - tag
+        - source
+        - author
+        type: string
+      value:
+        maxLength: 255
+        type: string
+      weight:
+        type: integer
+    required:
+    - rule_type
+    - target_type
+    - value
+    type: object
+  items.FeedItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/items.ItemResponse'
+        type: array
+      mode:
+        type: string
+      next_cursor:
+        type: string
+    type: object
+  items.ItemResponse:
+    properties:
+      author:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      excerpt:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      is_saved:
+        type: boolean
+      published_at:
+        type: string
+      score:
+        type: integer
+      source_id:
+        type: string
+      source_name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      url:
+        type: string
+    type: object
+  items.SavedItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/items.ItemResponse'
+        type: array
+    type: object
+  rss.RefreshResult:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      items_created:
+        type: integer
+      items_found:
+        type: integer
+      items_skipped:
+        type: integer
+      sources:
+        items:
+          $ref: '#/definitions/rss.SourceRefreshResult'
+        type: array
+    type: object
+  rss.SourceRefreshResult:
+    properties:
+      error:
+        type: string
+      feed_url:
+        type: string
+      items_created:
+        type: integer
+      items_found:
+        type: integer
+      items_skipped:
+        type: integer
+      last_fetched_at:
+        type: string
+      reason:
+        type: string
+      skipped:
+        type: boolean
+      source_id:
+        type: string
+    type: object
+  sources.CreateSourceRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      feed_url:
+        type: string
+      is_public:
+        type: boolean
+      language:
+        maxLength: 16
+        type: string
+      name:
+        maxLength: 160
+        minLength: 2
+        type: string
+      type:
+        enum:
+        - rss
+        type: string
+      url:
+        type: string
+    required:
+    - feed_url
+    - name
+    type: object
+  sources.SourceResponse:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      feed_url:
+        type: string
+      id:
+        type: string
+      is_public:
+        type: boolean
+      language:
+        type: string
+      last_fetched_at:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+    type: object
+  sources.UpdateSourceRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      feed_url:
+        type: string
+      is_public:
+        type: boolean
+      language:
+        maxLength: 16
+        type: string
+      name:
+        maxLength: 160
+        minLength: 2
+        type: string
+      status:
+        enum:
+        - active
+        - pending
+        - disabled
+        - error
+        type: string
+      type:
+        enum:
+        - rss
+        type: string
+      url:
+        type: string
+    required:
+    - feed_url
+    - name
+    type: object
+info:
+  contact: {}
+  description: 'Введите токен в формате: Bearer <JWT>'
+  title: Content Digest API
+  version: "0.1"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет email и пароль, возвращает JWT.
+      parameters:
+      - description: Данные входа
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Войти в приложение
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить текущего пользователя
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создает пользователя и возвращает JWT.
+      parameters:
+      - description: Данные регистрации
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Зарегистрировать пользователя
+      tags:
+      - auth
+  /api/catalog/discover:
+    post:
+      consumes:
+      - application/json
+      description: Скачивает HTML-страницу и ищет link rel=alternate type=application/rss+xml.
+      parameters:
+      - description: URL страницы
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.DiscoverRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.DiscoverResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Найти RSS на странице
+      tags:
+      - catalog
+  /api/catalog/topics:
+    get:
+      description: Возвращает curated-каталог тем и страниц источников, которые можно
+        подключить к ленте.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/catalog.Topic'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить каталог тем
+      tags:
+      - catalog
+  /api/categories:
+    get:
+      description: Возвращает список категорий приложения, которые используются для
+        нормализации тегов и фильтрации материалов.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/categories.CategoryResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить нормализованные категории
+      tags:
+      - categories
+  /api/feeds:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/feeds.FeedResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить ленты пользователя
+      tags:
+      - feeds
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные ленты
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/feeds.CreateFeedRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/feeds.FeedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать ленту
+      tags:
+      - feeds
+  /api/feeds/{id}:
+    delete:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить ленту
+      tags:
+      - feeds
+    get:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feeds.FeedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить ленту
+      tags:
+      - feeds
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные ленты
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/feeds.UpdateFeedRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feeds.FeedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить ленту
+      tags:
+      - feeds
+  /api/feeds/{id}/catalog-sources:
+    post:
+      consumes:
+      - application/json
+      description: Находит RSS для выбранных catalog source ids, создает sources и
+        feed_sources.
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Catalog source IDs
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.ConnectCatalogSourcesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/catalog.ConnectCatalogSourcesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Подключить источники каталога к ленте
+      tags:
+      - catalog
+  /api/feeds/{id}/items:
+    get:
+      description: mode=today возвращает сегодняшние материалы, mode=archive возвращает
+        архивные материалы с cursor-пагинацией.
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: today или archive
+        in: query
+        name: mode
+        type: string
+      - description: RFC3339 cursor для archive
+        in: query
+        name: cursor
+        type: string
+      - description: Лимит, максимум 100
+        in: query
+        name: limit
+        type: integer
+      - description: Slug категории, например ai или backend
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/items.FeedItemsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить материалы ленты
+      tags:
+      - items
+  /api/feeds/{id}/refresh:
+    post:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rss.RefreshResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить все источники ленты
+      tags:
+      - refresh
+  /api/feeds/{id}/rules:
+    get:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/filters.RuleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить правила фильтрации ленты
+      tags:
+      - filter-rules
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные правила
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/filters.CreateRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/filters.RuleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать правило фильтрации
+      tags:
+      - filter-rules
+  /api/feeds/{id}/rules/{ruleId}:
+    delete:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rule ID
+        in: path
+        name: ruleId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить правило фильтрации
+      tags:
+      - filter-rules
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rule ID
+        in: path
+        name: ruleId
+        required: true
+        type: string
+      - description: Данные правила
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/filters.UpdateRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filters.RuleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить правило фильтрации
+      tags:
+      - filter-rules
+  /api/feeds/{id}/sources:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Source ID и priority
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/feeds.AddSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/feeds.FeedSourceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Подключить source к ленте
+      tags:
+      - feeds
+  /api/feeds/{id}/sources/{sourceId}:
+    delete:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Source ID
+        in: path
+        name: sourceId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отключить source от ленты
+      tags:
+      - feeds
+  /api/items/{id}/save:
+    delete:
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить материал из избранного
+      tags:
+      - saved
+    post:
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Сохранить материал в избранное
+      tags:
+      - saved
+  /api/saved:
+    get:
+      parameters:
+      - description: Лимит, максимум 200
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/items.SavedItemsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить избранные материалы
+      tags:
+      - saved
+  /api/sources:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/sources.SourceResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить доступные источники
+      tags:
+      - sources
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные источника
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/sources.CreateSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/sources.SourceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать RSS-источник
+      tags:
+      - sources
+  /api/sources/{id}:
+    delete:
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить источник
+      tags:
+      - sources
+    get:
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SourceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить источник
+      tags:
+      - sources
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные источника
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/sources.UpdateSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SourceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить источник
+      tags:
+      - sources
+  /api/sources/{id}/refresh:
+    post:
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rss.RefreshResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить источник
+      tags:
+      - refresh
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

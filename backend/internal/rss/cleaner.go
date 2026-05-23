@@ -1,7 +1,9 @@
 package rss
 
 import (
+	"html"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -9,11 +11,15 @@ import (
 )
 
 type Cleaner struct {
-	policy *bluemonday.Policy
+	policy       *bluemonday.Policy
+	readMoreExpr *regexp.Regexp
 }
 
 func NewCleaner() *Cleaner {
-	return &Cleaner{policy: bluemonday.StrictPolicy()}
+	return &Cleaner{
+		policy:       bluemonday.StrictPolicy(),
+		readMoreExpr: regexp.MustCompile(`(?i)(>{1,2}|&gt;{1,2}|»)?\s*читать(\s+далее)?\s*(>{1,2}|&gt;{1,2}|»)?`),
+	}
 }
 
 func (c *Cleaner) CleanText(value string) string {
@@ -27,9 +33,9 @@ func (c *Cleaner) CleanText(value string) string {
 		value = doc.Text()
 	}
 
-	value = c.policy.Sanitize(value)
+	value = html.UnescapeString(c.policy.Sanitize(value))
 	value = strings.ReplaceAll(value, "\u00a0", " ")
-	value = strings.ReplaceAll(value, "Читать далее", "")
+	value = c.readMoreExpr.ReplaceAllString(value, "")
 	value = strings.Join(strings.Fields(value), " ")
 	return strings.TrimSpace(value)
 }

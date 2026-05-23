@@ -11,12 +11,17 @@ type ListMode string
 const (
 	ModeToday   ListMode = "today"
 	ModeArchive ListMode = "archive"
+	ModeAll     ListMode = "all"
 )
 
 type ListQuery struct {
-	Mode   ListMode
-	Cursor *time.Time
-	Limit  int
+	Mode       ListMode
+	Cursor     *time.Time
+	Limit      int
+	Category   string
+	Categories []string
+	DateFrom   *time.Time
+	DateTo     *time.Time
 }
 
 type ItemResponse struct {
@@ -30,6 +35,7 @@ type ItemResponse struct {
 	Author      string    `json:"author"`
 	PublishedAt time.Time `json:"published_at"`
 	Tags        []string  `json:"tags"`
+	Categories  []string  `json:"categories"`
 	Score       int       `json:"score"`
 	IsSaved     bool      `json:"is_saved"`
 }
