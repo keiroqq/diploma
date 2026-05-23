@@ -1,5 +1,6 @@
 .env
 .DS_Store
+.codex/
 
 backend/.env
 backend/bin/
@@ -8,4 +9,5 @@ backend/coverage.out
 
 frontend/node_modules/
 frontend/dist/
+frontend/.vite/
 frontend/.env

@@ -32,7 +32,7 @@ func (s *Service) ListFeedItems(ctx context.Context, feedID uuid.UUID, userID uu
 		query.Mode = ModeToday
 	}
 	query.Category = strings.TrimSpace(query.Category)
-	if query.Mode != ModeToday && query.Mode != ModeArchive {
+	if query.Mode != ModeToday && query.Mode != ModeArchive && query.Mode != ModeAll {
 		return nil, httpx.ErrInvalidInput
 	}
 	if query.Limit <= 0 {
@@ -40,6 +40,11 @@ func (s *Service) ListFeedItems(ctx context.Context, feedID uuid.UUID, userID uu
 	}
 	if query.Limit > 100 {
 		query.Limit = 100
+	}
+	query.Categories = normalizeCategorySlugs(query.Categories)
+	if query.Category != "" {
+		query.Category = normalizeSlug(query.Category)
+		query.Categories = normalizeCategorySlugs(append(query.Categories, query.Category))
 	}
 
 	exists, err := s.repo.FeedExistsForUser(ctx, feedID, userID)
@@ -278,10 +283,24 @@ func ParseListQuery(values map[string][]string) (ListQuery, error) {
 		query.Cursor = &cursor
 	}
 	if rawCategory := firstQuery(values, "category"); rawCategory != "" {
-		query.Category = slug.Make(rawCategory)
-		if query.Category == "" {
-			query.Category = strings.ToLower(strings.TrimSpace(rawCategory))
+		query.Category = normalizeSlug(rawCategory)
+		query.Categories = append(query.Categories, query.Category)
+	}
+	query.Categories = append(query.Categories, categorySlugsFromQuery(values)...)
+
+	if rawDateFrom := firstQuery(values, "date_from"); rawDateFrom != "" {
+		dateFrom, err := parseDateQuery(rawDateFrom, false)
+		if err != nil {
+			return ListQuery{}, err
 		}
+		query.DateFrom = &dateFrom
+	}
+	if rawDateTo := firstQuery(values, "date_to"); rawDateTo != "" {
+		dateTo, err := parseDateQuery(rawDateTo, true)
+		if err != nil {
+			return ListQuery{}, err
+		}
+		query.DateTo = &dateTo
 	}
 	return query, nil
 }
@@ -291,4 +310,61 @@ func firstQuery(values map[string][]string, key string) string {
 		return ""
 	}
 	return values[key][0]
+}
+
+func categorySlugsFromQuery(values map[string][]string) []string {
+	rawValues := append([]string{}, values["categories"]...)
+	if len(values["category"]) > 1 {
+		rawValues = append(rawValues, values["category"][1:]...)
+	}
+
+	result := make([]string, 0, len(rawValues))
+	for _, rawValue := range rawValues {
+		for _, part := range strings.Split(rawValue, ",") {
+			if normalized := normalizeSlug(part); normalized != "" {
+				result = append(result, normalized)
+			}
+		}
+	}
+	return result
+}
+
+func normalizeCategorySlugs(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		normalized := normalizeSlug(value)
+		if normalized == "" {
+			continue
+		}
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
+}
+
+func normalizeSlug(value string) string {
+	normalized := slug.Make(value)
+	if normalized == "" {
+		normalized = strings.ToLower(strings.TrimSpace(value))
+	}
+	return normalized
+}
+
+func parseDateQuery(value string, endExclusive bool) (time.Time, error) {
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed, nil
+	}
+
+	parsed, err := time.ParseInLocation(time.DateOnly, value, time.Local)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if endExclusive {
+		parsed = parsed.AddDate(0, 0, 1)
+	}
+	return parsed, nil
 }

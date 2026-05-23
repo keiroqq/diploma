@@ -11,13 +11,17 @@ type ListMode string
 const (
 	ModeToday   ListMode = "today"
 	ModeArchive ListMode = "archive"
+	ModeAll     ListMode = "all"
 )
 
 type ListQuery struct {
-	Mode     ListMode
-	Cursor   *time.Time
-	Limit    int
-	Category string
+	Mode       ListMode
+	Cursor     *time.Time
+	Limit      int
+	Category   string
+	Categories []string
+	DateFrom   *time.Time
+	DateTo     *time.Time
 }
 
 type ItemResponse struct {

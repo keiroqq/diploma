@@ -115,6 +115,18 @@ func TestParseListQuery(t *testing.T) {
 	}
 }
 
+func TestParseListQueryAllMode(t *testing.T) {
+	query, err := ParseListQuery(map[string][]string{
+		"mode": {"all"},
+	})
+	if err != nil {
+		t.Fatalf("ParseListQuery returned error: %v", err)
+	}
+	if query.Mode != ModeAll {
+		t.Fatalf("Mode = %q, want %q", query.Mode, ModeAll)
+	}
+}
+
 func TestParseListQueryCategory(t *testing.T) {
 	query, err := ParseListQuery(map[string][]string{
 		"category": {"Artificial Intelligence"},
@@ -124,5 +136,35 @@ func TestParseListQueryCategory(t *testing.T) {
 	}
 	if query.Category != "artificial-intelligence" {
 		t.Fatalf("Category = %q, want artificial-intelligence", query.Category)
+	}
+	if len(query.Categories) != 1 || query.Categories[0] != "artificial-intelligence" {
+		t.Fatalf("Categories = %#v, want artificial-intelligence", query.Categories)
+	}
+}
+
+func TestParseListQueryCategoriesAndDateRange(t *testing.T) {
+	query, err := ParseListQuery(map[string][]string{
+		"categories": {"AI,Backend", "Frontend"},
+		"date_from":  {"2026-05-10"},
+		"date_to":    {"2026-05-12"},
+	})
+	if err != nil {
+		t.Fatalf("ParseListQuery returned error: %v", err)
+	}
+
+	wantCategories := []string{"ai", "backend", "frontend"}
+	if len(query.Categories) != len(wantCategories) {
+		t.Fatalf("Categories = %#v, want %#v", query.Categories, wantCategories)
+	}
+	for i, want := range wantCategories {
+		if query.Categories[i] != want {
+			t.Fatalf("Categories[%d] = %q, want %q", i, query.Categories[i], want)
+		}
+	}
+	if query.DateFrom == nil || query.DateFrom.Format(time.DateOnly) != "2026-05-10" {
+		t.Fatalf("DateFrom = %v, want 2026-05-10", query.DateFrom)
+	}
+	if query.DateTo == nil || query.DateTo.Format(time.DateOnly) != "2026-05-13" {
+		t.Fatalf("DateTo = %v, want exclusive 2026-05-13", query.DateTo)
 	}
 }

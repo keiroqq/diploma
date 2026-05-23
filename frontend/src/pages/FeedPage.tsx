@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from "react-router-dom";
 
 import {
   getFeed,
-  listCategories,
   listFeedItems,
   refreshFeed,
   saveItem,
@@ -18,14 +17,16 @@ import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { useUiStore } from "../store/ui";
 import { errorMessage } from "../utils/errors";
+import { getDateFilter, getSelectedCategorySlugs } from "../utils/filters";
 import { filterItemsByQuery } from "../utils/items";
 
 export function FeedPage() {
   const { feedId = "" } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const searchQuery = useUiStore((state) => state.searchQuery);
-  const category = searchParams.get("category") ?? "";
+  const dateFilter = getDateFilter(searchParams);
+  const selectedCategories = getSelectedCategorySlugs(searchParams);
 
   const feedQuery = useQuery({
     queryKey: ["feed", feedId],
@@ -33,22 +34,23 @@ export function FeedPage() {
     enabled: Boolean(feedId)
   });
 
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: listCategories
-  });
-
-  const todayItemsQuery = useQuery({
-    queryKey: ["feedItems", feedId, "today", category],
-    queryFn: () => listFeedItems(feedId, category || undefined, "today"),
+  const itemsQuery = useQuery({
+    queryKey: [
+      "feedItems",
+      feedId,
+      dateFilter.mode,
+      dateFilter.dateFrom,
+      dateFilter.dateTo,
+      selectedCategories
+    ],
+    queryFn: () =>
+      listFeedItems(feedId, {
+        mode: dateFilter.mode,
+        dateFrom: dateFilter.dateFrom,
+        dateTo: dateFilter.dateTo,
+        categories: selectedCategories
+      }),
     enabled: Boolean(feedId)
-  });
-
-  const todayItems = todayItemsQuery.data?.items ?? [];
-  const archiveItemsQuery = useQuery({
-    queryKey: ["feedItems", feedId, "archive", category],
-    queryFn: () => listFeedItems(feedId, category || undefined, "archive"),
-    enabled: Boolean(feedId) && todayItemsQuery.isSuccess && todayItems.length === 0
   });
 
   const refreshMutation = useMutation({
@@ -67,27 +69,13 @@ export function FeedPage() {
     }
   });
 
-  const archiveItems = archiveItemsQuery.data?.items ?? [];
-  const isArchiveFallback = todayItemsQuery.isSuccess && todayItems.length === 0;
-  const items = isArchiveFallback ? archiveItems : todayItems;
+  const items = itemsQuery.data?.items ?? [];
   const visibleItems = useMemo(
     () => filterItemsByQuery(items, searchQuery),
     [items, searchQuery]
   );
 
-  function setCategory(slug: string) {
-    const next = new URLSearchParams(searchParams);
-
-    if (slug) {
-      next.set("category", slug);
-    } else {
-      next.delete("category");
-    }
-
-    setSearchParams(next, { replace: true });
-  }
-
-  if (feedQuery.isLoading || todayItemsQuery.isLoading || archiveItemsQuery.isLoading) {
+  if (feedQuery.isLoading || itemsQuery.isLoading) {
     return <LoadingState label="Загружаем материалы" />;
   }
 
@@ -101,7 +89,7 @@ export function FeedPage() {
     <section className="page-section">
       <div className="section-heading feed-heading">
         <div>
-          <p className="eyebrow">{isArchiveFallback ? "Последние" : "Сегодня"}</p>
+          <p className="eyebrow">{dateFilter.label}</p>
           <h1>{feed?.name ?? "Поток"}</h1>
           {feed?.description ? <p>{feed.description}</p> : null}
         </div>
@@ -116,39 +104,16 @@ export function FeedPage() {
         </button>
       </div>
 
-      <div className="filter-rail" aria-label="Фильтр по категориям">
-        <button
-          className={`chip-button ${!category ? "active" : ""}`}
-          type="button"
-          onClick={() => setCategory("")}
-        >
-          Все
-        </button>
-        {(categoriesQuery.data ?? []).map((item) => (
-          <button
-            className={`chip-button ${category === item.slug ? "active" : ""}`}
-            type="button"
-            key={item.id}
-            onClick={() => setCategory(item.slug)}
-          >
-            {item.name}
-          </button>
-        ))}
-      </div>
-
       {refreshMutation.isError ? (
         <ErrorState title="Обновление не удалось" message={errorMessage(refreshMutation.error)} />
       ) : null}
-      {todayItemsQuery.isError ? <ErrorState message={errorMessage(todayItemsQuery.error)} /> : null}
-      {archiveItemsQuery.isError ? (
-        <ErrorState message={errorMessage(archiveItemsQuery.error)} />
-      ) : null}
+      {itemsQuery.isError ? <ErrorState message={errorMessage(itemsQuery.error)} /> : null}
 
-      {!todayItemsQuery.isError && !archiveItemsQuery.isError && !items.length ? (
+      {!itemsQuery.isError && !items.length ? (
         <EmptyState
           icon={<Rss size={34} aria-hidden />}
           title="Материалов пока нет"
-          description="Обновите поток: backend загрузит RSS и сохранит найденные статьи."
+          description="Для выбранных фильтров материалов нет. Можно изменить дату, темы или обновить поток."
           action={
             <button
               className="primary-button"

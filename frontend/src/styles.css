@@ -89,6 +89,7 @@ img {
 
 .app-shell {
   min-height: 100vh;
+  --topbar-offset: var(--topbar-height);
 }
 
 .topbar {
@@ -97,15 +98,18 @@ img {
   top: 0;
   right: 0;
   left: 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.topbar-main {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
   height: var(--topbar-height);
   padding: 0 14px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(14px);
 }
 
 .topbar-title {
@@ -125,7 +129,7 @@ img {
 .app-main {
   width: min(100%, 1040px);
   margin: 0 auto;
-  padding: calc(var(--topbar-height) + 18px) 16px 40px;
+  padding: calc(var(--topbar-offset) + 18px) 16px 40px;
 }
 
 .icon-button,
@@ -207,6 +211,11 @@ img {
   padding: 0 12px;
 }
 
+.primary-button.compact {
+  min-height: 36px;
+  padding: 0 13px;
+}
+
 .text-button {
   min-height: 38px;
   background: transparent;
@@ -252,6 +261,253 @@ img {
 
 .search-field input::placeholder {
   color: var(--text-muted);
+}
+
+.feed-toolbar {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.feed-toolbar-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-toggle.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.feed-strip {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 0;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.feed-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.feed-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: fit-content;
+  max-width: 220px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 800;
+  padding: 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-pill:hover,
+.feed-pill:focus-visible,
+.feed-pill.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.filter-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 8%);
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.filter-row-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filter-control {
+  position: relative;
+  min-width: 0;
+}
+
+.filter-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: min(100%, 560px);
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 12px;
+  text-align: left;
+}
+
+.filter-select:hover,
+.filter-select:focus-visible {
+  border-color: var(--accent);
+}
+
+.filter-select svg:last-child {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.filter-popover {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 28px));
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.filter-popover > button:not(.primary-button) {
+  min-height: 36px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+  padding: 0 10px;
+}
+
+.filter-popover > button:hover,
+.filter-popover > button:focus-visible {
+  background: var(--surface-soft);
+}
+
+.filter-popover .primary-button {
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  text-align: center;
+}
+
+.filter-popover .text-button {
+  justify-content: center;
+  background: transparent;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.date-input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.date-input-grid label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.date-input-grid input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 9px;
+}
+
+.category-popover {
+  width: min(420px, calc(100vw - 28px));
+}
+
+.category-options {
+  display: grid;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.checkbox-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.checkbox-row:hover,
+.checkbox-row:focus-within {
+  background: var(--surface-soft);
+}
+
+.checkbox-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-checkbox {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.checkbox-row input:checked + .custom-checkbox {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
 }
 
 .drawer-backdrop {
@@ -1004,13 +1260,18 @@ img {
 }
 
 @media (max-width: 720px) {
-  .topbar {
+  .topbar-main {
     grid-template-columns: 42px minmax(0, 1fr) 42px;
     padding: 0 10px;
   }
 
+  .feed-toolbar {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
   .app-main {
-    padding: calc(var(--topbar-height) + 12px) 10px 28px;
+    padding: calc(var(--topbar-offset) + 12px) 10px 28px;
   }
 
   .section-heading {
@@ -1038,6 +1299,15 @@ img {
 
   .builder-summary {
     justify-content: space-between;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .filter-select {
+    width: 100%;
   }
 
   .article-card {

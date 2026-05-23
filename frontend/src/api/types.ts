@@ -97,7 +97,7 @@ export type Item = {
 
 export type FeedItemsResponse = {
   items: Item[];
-  mode: "today" | "archive";
+  mode: "today" | "archive" | "all";
   next_cursor?: string;
 };
 

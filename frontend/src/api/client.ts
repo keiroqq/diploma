@@ -166,18 +166,28 @@ export function listCategories() {
   return apiRequest<Category[]>("/api/categories");
 }
 
-export function listFeedItems(
-  feedId: string,
-  category?: string,
-  mode: "today" | "archive" = "today"
-) {
+export type ListFeedItemsParams = {
+  mode?: "today" | "archive" | "all";
+  categories?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+};
+
+export function listFeedItems(feedId: string, options: ListFeedItemsParams = {}) {
   const params = new URLSearchParams({
-    mode,
-    limit: "50"
+    mode: options.mode ?? "today",
+    limit: String(options.limit ?? 50)
   });
 
-  if (category) {
-    params.set("category", category);
+  if (options.categories?.length) {
+    params.set("categories", options.categories.join(","));
+  }
+  if (options.dateFrom) {
+    params.set("date_from", options.dateFrom);
+  }
+  if (options.dateTo) {
+    params.set("date_to", options.dateTo);
   }
 
   return apiRequest<FeedItemsResponse>(

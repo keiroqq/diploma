@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark,
+  CalendarDays,
+  Check,
+  ChevronDown,
   Compass,
+  Filter,
   LogOut,
   Menu,
   Rss,
@@ -10,15 +14,29 @@ import {
   UserCircle,
   X
 } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useSearchParams
+} from "react-router-dom";
 
-import { getMe, listFeeds } from "../api/client";
+import { getMe, listCategories, listFeeds } from "../api/client";
 import { useAuthStore } from "../store/auth";
 import { useUiStore } from "../store/ui";
+import {
+  categoryFilterLabel,
+  getDateFilter,
+  getSelectedCategorySlugs,
+  localDateString,
+  type DatePreset
+} from "../utils/filters";
 
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
@@ -33,6 +51,13 @@ export function AppShell() {
   const setSearchQuery = useUiStore((state) => state.setSearchQuery);
   const closeSearch = useUiStore((state) => state.closeSearch);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const feedPillRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [dateMenuOpen, setDateMenuOpen] = useState(false);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [draftDateFrom, setDraftDateFrom] = useState("");
+  const [draftDateTo, setDraftDateTo] = useState("");
+  const [draftCategories, setDraftCategories] = useState<string[]>([]);
 
   const feedsQuery = useQuery({
     queryKey: ["feeds"],
@@ -47,6 +72,12 @@ export function AppShell() {
     staleTime: 5 * 60_000
   });
 
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    enabled: Boolean(token)
+  });
+
   useEffect(() => {
     if (meQuery.data) {
       setUser(meQuery.data);
@@ -54,7 +85,13 @@ export function AppShell() {
   }, [meQuery.data, setUser]);
 
   const feedId = location.pathname.match(/^\/feeds\/([^/]+)/)?.[1];
+  const isFeedRoute = Boolean(feedId);
   const currentFeed = feedsQuery.data?.find((feed) => feed.id === feedId);
+  const dateFilter = getDateFilter(searchParams);
+  const selectedCategories = getSelectedCategorySlugs(searchParams);
+  const categories = categoriesQuery.data ?? [];
+  const categoryLabel = categoryFilterLabel(categories, selectedCategories);
+  const headerOffset = isFeedRoute ? (filtersOpen ? "250px" : "126px") : "64px";
 
   const pageTitle = useMemo(() => {
     if (location.pathname === "/catalog") {
@@ -84,6 +121,33 @@ export function AppShell() {
     }
   }, [searchOpen]);
 
+  useEffect(() => {
+    setDraftDateFrom(dateFilter.dateFrom ?? "");
+    setDraftDateTo(dateFilter.dateTo ?? "");
+  }, [dateFilter.dateFrom, dateFilter.dateTo]);
+
+  useEffect(() => {
+    setDraftCategories(selectedCategories);
+  }, [selectedCategories.join(",")]);
+
+  useEffect(() => {
+    if (!isFeedRoute) {
+      setFiltersOpen(false);
+      setDateMenuOpen(false);
+      setCategoryMenuOpen(false);
+    }
+  }, [isFeedRoute]);
+
+  useEffect(() => {
+    if (feedId) {
+      feedPillRefs.current[feedId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+    }
+  }, [feedId, feedsQuery.data?.length]);
+
   function handleLogout() {
     queryClient.clear();
     logout();
@@ -94,52 +158,269 @@ export function AppShell() {
     setDrawerOpen(false);
   }
 
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <button
-          className="icon-button"
-          type="button"
-          title="Открыть меню"
-          aria-label="Открыть меню"
-          onClick={toggleDrawer}
-        >
-          <Menu size={22} aria-hidden />
-        </button>
+  function updateFilterParams(mutator: (next: URLSearchParams) => void) {
+    const next = new URLSearchParams(searchParams);
+    mutator(next);
+    setSearchParams(next, { replace: false });
+  }
 
-        <div className="topbar-title">
-          {searchOpen && searchAvailable ? (
-            <label className="search-field">
-              <Search size={18} aria-hidden />
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск по текущей выдаче"
-              />
-            </label>
-          ) : (
-            <span>{pageTitle}</span>
-          )}
+  function applyDatePreset(preset: DatePreset) {
+    updateFilterParams((next) => {
+      next.delete("date_from");
+      next.delete("date_to");
+
+      if (preset === "today") {
+        next.delete("date");
+      } else {
+        next.set("date", preset);
+      }
+    });
+    setDateMenuOpen(false);
+  }
+
+  function applyCustomDate() {
+    updateFilterParams((next) => {
+      next.set("date", "custom");
+      if (draftDateFrom) {
+        next.set("date_from", draftDateFrom);
+      } else {
+        next.delete("date_from");
+      }
+      if (draftDateTo) {
+        next.set("date_to", draftDateTo);
+      } else {
+        next.delete("date_to");
+      }
+    });
+    setDateMenuOpen(false);
+  }
+
+  function toggleDraftCategory(slug: string) {
+    setDraftCategories((current) =>
+      current.includes(slug)
+        ? current.filter((item) => item !== slug)
+        : [...current, slug]
+    );
+  }
+
+  function applyCategories() {
+    updateFilterParams((next) => {
+      next.delete("category");
+      if (draftCategories.length) {
+        next.set("categories", draftCategories.join(","));
+      } else {
+        next.delete("categories");
+      }
+    });
+    setCategoryMenuOpen(false);
+  }
+
+  const shellStyle = {
+    "--topbar-offset": headerOffset
+  } as CSSProperties;
+
+  return (
+    <div className="app-shell" style={shellStyle}>
+      <header className={`topbar ${isFeedRoute ? "with-feed-tools" : ""}`}>
+        <div className="topbar-main">
+          <button
+            className="icon-button"
+            type="button"
+            title="Открыть меню"
+            aria-label="Открыть меню"
+            onClick={toggleDrawer}
+          >
+            <Menu size={22} aria-hidden />
+          </button>
+
+          <div className="topbar-title">
+            {searchOpen && searchAvailable ? (
+              <label className="search-field">
+                <Search size={18} aria-hidden />
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Поиск по текущей выдаче"
+                />
+              </label>
+            ) : (
+              <span>{pageTitle}</span>
+            )}
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            title={searchOpen ? "Закрыть поиск" : "Поиск"}
+            aria-label={searchOpen ? "Закрыть поиск" : "Поиск"}
+            disabled={!searchAvailable}
+            onClick={() => {
+              if (searchOpen) {
+                closeSearch();
+              } else {
+                setSearchOpen(true);
+              }
+            }}
+          >
+            {searchOpen ? <X size={21} aria-hidden /> : <Search size={21} aria-hidden />}
+          </button>
         </div>
 
-        <button
-          className="icon-button"
-          type="button"
-          title={searchOpen ? "Закрыть поиск" : "Поиск"}
-          aria-label={searchOpen ? "Закрыть поиск" : "Поиск"}
-          disabled={!searchAvailable}
-          onClick={() => {
-            if (searchOpen) {
-              closeSearch();
-            } else {
-              setSearchOpen(true);
-            }
-          }}
-        >
-          {searchOpen ? <X size={21} aria-hidden /> : <Search size={21} aria-hidden />}
-        </button>
+        {isFeedRoute ? (
+          <div className="feed-toolbar">
+            <div className="feed-toolbar-row">
+              <button
+                className={`icon-button filter-toggle ${filtersOpen ? "active" : ""}`}
+                type="button"
+                title="Фильтры"
+                aria-label="Фильтры"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <Filter size={19} aria-hidden />
+              </button>
+              <div className="feed-strip" aria-label="Быстрое переключение потоков">
+                {(feedsQuery.data ?? []).map((feed) => (
+                  <NavLink
+                    className={({ isActive }) =>
+                      `feed-pill ${isActive ? "active" : ""}`
+                    }
+                    key={feed.id}
+                    ref={(node) => {
+                      feedPillRefs.current[feed.id] = node;
+                    }}
+                    to={`/feeds/${feed.id}${location.search}`}
+                  >
+                    {feed.name}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+
+            {filtersOpen ? (
+              <div className="filter-panel" aria-label="Фильтры ленты">
+                <div className="filter-row">
+                  <span className="filter-row-label">Диапазон дат</span>
+                  <div className="filter-control">
+                    <button
+                      className="filter-select"
+                      type="button"
+                      onClick={() => {
+                        setDateMenuOpen((open) => !open);
+                        setCategoryMenuOpen(false);
+                      }}
+                    >
+                      <CalendarDays size={16} aria-hidden />
+                      {dateFilter.label}
+                      <ChevronDown size={16} aria-hidden />
+                    </button>
+                    {dateMenuOpen ? (
+                      <div className="filter-popover date-popover">
+                        <button type="button" onClick={() => applyDatePreset("today")}>
+                          Сегодня
+                        </button>
+                        <button type="button" onClick={() => applyDatePreset("7d")}>
+                          Последние 7 дней
+                        </button>
+                        <button type="button" onClick={() => applyDatePreset("30d")}>
+                          Последние 30 дней
+                        </button>
+                        <button type="button" onClick={() => applyDatePreset("all")}>
+                          Все даты
+                        </button>
+                        <div className="date-input-grid">
+                          <label>
+                            С
+                            <input
+                              type="date"
+                              value={draftDateFrom}
+                              max={draftDateTo || undefined}
+                              onChange={(event) => setDraftDateFrom(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            По
+                            <input
+                              type="date"
+                              value={draftDateTo}
+                              min={draftDateFrom || undefined}
+                              max={localDateString(new Date())}
+                              onChange={(event) => setDraftDateTo(event.target.value)}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          className="primary-button compact"
+                          type="button"
+                          disabled={!draftDateFrom && !draftDateTo}
+                          onClick={applyCustomDate}
+                        >
+                          Применить
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="filter-row">
+                  <span className="filter-row-label">Темы</span>
+                  <div className="filter-control">
+                    <button
+                      className="filter-select"
+                      type="button"
+                      onClick={() => {
+                        setCategoryMenuOpen((open) => !open);
+                        setDateMenuOpen(false);
+                      }}
+                    >
+                      {categoryLabel}
+                      <ChevronDown size={16} aria-hidden />
+                    </button>
+                    {categoryMenuOpen ? (
+                      <div className="filter-popover category-popover">
+                        <div className="category-options">
+                          {categories.map((category) => (
+                            <label className="checkbox-row" key={category.id}>
+                              <input
+                                type="checkbox"
+                                checked={draftCategories.includes(category.slug)}
+                                onChange={() => toggleDraftCategory(category.slug)}
+                              />
+                              <span className="custom-checkbox">
+                                {draftCategories.includes(category.slug) ? (
+                                  <Check size={14} aria-hidden />
+                                ) : null}
+                              </span>
+                              {category.name}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="popover-actions">
+                          <button
+                            className="text-button"
+                            type="button"
+                            onClick={() => setDraftCategories([])}
+                          >
+                            Сбросить
+                          </button>
+                          <button
+                            className="primary-button compact"
+                            type="button"
+                            onClick={applyCategories}
+                          >
+                            Применить
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       <button
