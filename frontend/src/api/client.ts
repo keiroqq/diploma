@@ -12,6 +12,7 @@ import type {
   RegisterRequest,
   SavedItemsResponse,
   Topic,
+  UpdateFeedRequest,
   User
 } from "./types";
 
@@ -138,6 +139,13 @@ export function getFeed(feedId: string) {
 export function createFeed(payload: CreateFeedRequest) {
   return apiRequest<Feed>("/api/feeds", {
     method: "POST",
+    ...withJSON(payload)
+  });
+}
+
+export function updateFeed(feedId: string, payload: UpdateFeedRequest) {
+  return apiRequest<Feed>(`/api/feeds/${feedId}`, {
+    method: "PUT",
     ...withJSON(payload)
   });
 }

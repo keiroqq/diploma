@@ -1,16 +1,20 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Compass, RefreshCw, Rss, Trash2 } from "lucide-react";
+import { ArrowRight, Compass, Pencil, RefreshCw, Rss, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { deleteFeed, listFeeds, refreshFeed } from "../api/client";
+import type { Feed } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { FeedEditDialog } from "../components/FeedEditDialog";
 import { LoadingState } from "../components/LoadingState";
 import { errorMessage } from "../utils/errors";
 
 export function FeedsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
 
   const feedsQuery = useQuery({
     queryKey: ["feeds"],
@@ -62,6 +66,8 @@ export function FeedsPage() {
 
   return (
     <section className="page-section">
+      <FeedEditDialog feed={editingFeed} onClose={() => setEditingFeed(null)} />
+
       <div className="section-heading">
         <div>
           <p className="eyebrow">Потоки</p>
@@ -106,6 +112,14 @@ export function FeedsPage() {
                 </div>
               </div>
               <div className="feed-card-actions">
+                <button
+                  className="secondary-button compact"
+                  type="button"
+                  onClick={() => setEditingFeed(feed)}
+                >
+                  <Pencil size={17} aria-hidden />
+                  Изменить
+                </button>
                 <button
                   className="secondary-button compact danger-action"
                   type="button"

@@ -41,6 +41,8 @@ export type CreateFeedRequest = {
   is_default?: boolean;
 };
 
+export type UpdateFeedRequest = CreateFeedRequest;
+
 export type CatalogSource = {
   id: string;
   provider: string;

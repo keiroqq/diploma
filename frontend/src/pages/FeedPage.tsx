@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Rss, Trash2 } from "lucide-react";
+import { Pencil, RefreshCw, Rss, Trash2 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -15,6 +15,7 @@ import type { Item } from "../api/types";
 import { ArticleCard } from "../components/ArticleCard";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { FeedEditDialog } from "../components/FeedEditDialog";
 import { LoadingState } from "../components/LoadingState";
 import { useUiStore } from "../store/ui";
 import { errorMessage } from "../utils/errors";
@@ -26,6 +27,7 @@ export function FeedPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [editingOpen, setEditingOpen] = useState(false);
   const searchQuery = useUiStore((state) => state.searchQuery);
   const dateFilter = getDateFilter(searchParams);
   const selectedCategories = getSelectedCategorySlugs(searchParams);
@@ -98,6 +100,11 @@ export function FeedPage() {
 
   return (
     <section className="page-section">
+      <FeedEditDialog
+        feed={editingOpen && feed ? feed : null}
+        onClose={() => setEditingOpen(false)}
+      />
+
       <div className="section-heading feed-heading">
         <div>
           <p className="eyebrow">{dateFilter.label}</p>
@@ -105,6 +112,14 @@ export function FeedPage() {
           {feed?.description ? <p>{feed.description}</p> : null}
         </div>
         <div className="feed-heading-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setEditingOpen(true)}
+          >
+            <Pencil size={17} aria-hidden />
+            Изменить
+          </button>
           <button
             className="secondary-button danger-action"
             type="button"
