@@ -248,19 +248,28 @@ export function AppShell() {
     dateInput.focus();
   }
 
-  function closePopoverFromHeaderClick(event: React.MouseEvent<HTMLElement>) {
-    if (!popoverOpen) {
-      return;
-    }
-
+  function closeFiltersFromHeaderClick(event: React.MouseEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
     if (target.closest(".filter-popover")) {
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
+    if (popoverOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeFilterPopovers();
+      return;
+    }
+
+    if (!filtersOpen) {
+      return;
+    }
+    if (target.closest(".filter-panel") || target.closest(".filter-toggle")) {
+      return;
+    }
+
     closeFilterPopovers();
+    setFiltersOpen(false);
   }
 
   const shellStyle = {
@@ -286,7 +295,7 @@ export function AppShell() {
       ) : null}
       <header
         className={`topbar ${isFeedRoute ? "with-feed-tools" : ""}`}
-        onClickCapture={closePopoverFromHeaderClick}
+        onClickCapture={closeFiltersFromHeaderClick}
       >
         <div className="topbar-main">
           <button
