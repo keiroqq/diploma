@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Compass, RefreshCw, Rss } from "lucide-react";
+import { ArrowRight, Compass, RefreshCw, Rss, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { listFeeds, refreshFeed } from "../api/client";
+import { deleteFeed, listFeeds, refreshFeed } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
@@ -22,6 +22,13 @@ export function FeedsPage() {
     onSuccess: (_, feedId) => {
       queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
       queryClient.invalidateQueries({ queryKey: ["saved"] });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteFeed,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feeds"] });
     }
   });
 
@@ -72,6 +79,12 @@ export function FeedsPage() {
           message={errorMessage(refreshMutation.error)}
         />
       ) : null}
+      {deleteMutation.isError ? (
+        <ErrorState
+          title="Не удалось удалить ленту"
+          message={errorMessage(deleteMutation.error)}
+        />
+      ) : null}
 
       <div className="feed-grid">
         {feeds.map((feed) => {
@@ -93,6 +106,21 @@ export function FeedsPage() {
                 </div>
               </div>
               <div className="feed-card-actions">
+                <button
+                  className="secondary-button compact danger-action"
+                  type="button"
+                  title="Удалить"
+                  aria-label={`Удалить ${feed.name}`}
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Удалить поток "${feed.name}"?`)) {
+                      deleteMutation.mutate(feed.id);
+                    }
+                  }}
+                >
+                  <Trash2 size={18} aria-hidden />
+                  Удалить
+                </button>
                 <button
                   className="icon-button"
                   type="button"

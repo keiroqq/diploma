@@ -115,6 +115,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		httpx.RespondError(w, http.StatusNotFound, "catalog source or feed not found")
 	case errors.Is(err, ErrRSSNotFound):
 		httpx.RespondError(w, http.StatusUnprocessableEntity, "rss feed not found on page")
+	case errors.Is(err, ErrPageFetchFailed):
+		httpx.RespondError(w, http.StatusUnprocessableEntity, "rss page could not be fetched")
 	default:
 		httpx.RespondError(w, http.StatusInternalServerError, "internal server error")
 	}

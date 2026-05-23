@@ -142,6 +142,12 @@ export function createFeed(payload: CreateFeedRequest) {
   });
 }
 
+export function deleteFeed(feedId: string) {
+  return apiRequest<void>(`/api/feeds/${feedId}`, {
+    method: "DELETE"
+  });
+}
+
 export function connectCatalogSources(feedId: string, sourceIds: string[]) {
   return apiRequest<ConnectCatalogSourcesResponse>(
     `/api/feeds/${feedId}/catalog-sources`,

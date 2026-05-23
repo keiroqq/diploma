@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   connectCatalogSources,
   createFeed,
+  deleteFeed,
   listCatalogTopics,
   refreshFeed
 } from "../api/client";
@@ -45,8 +46,14 @@ export function CatalogPage() {
         layout_type: "cards"
       });
 
-      await connectCatalogSources(feed.id, sourceIds);
-      await refreshFeed(feed.id);
+      try {
+        await connectCatalogSources(feed.id, sourceIds);
+      } catch (error) {
+        await deleteFeed(feed.id).catch(() => undefined);
+        throw error;
+      }
+
+      await refreshFeed(feed.id).catch(() => undefined);
 
       return feed;
     },

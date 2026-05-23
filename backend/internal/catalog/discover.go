@@ -12,6 +12,7 @@ import (
 )
 
 var ErrRSSNotFound = errors.New("rss feed not found")
+var ErrPageFetchFailed = errors.New("page fetch failed")
 
 type Discoverer struct {
 	client *http.Client
@@ -38,12 +39,12 @@ func (d *Discoverer) Discover(ctx context.Context, pageURL string) (DiscoverResp
 
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return DiscoverResponse{}, err
+		return DiscoverResponse{}, errors.Join(ErrPageFetchFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return DiscoverResponse{}, errors.New("page returned non-success status")
+		return DiscoverResponse{}, ErrPageFetchFailed
 	}
 
 	return discoverFromHTML(parsed, resp.Body)

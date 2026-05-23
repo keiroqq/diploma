@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Rss } from "lucide-react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { RefreshCw, Rss, Trash2 } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
+  deleteFeed,
   getFeed,
   listFeedItems,
   refreshFeed,
@@ -23,6 +24,7 @@ import { filterItemsByQuery } from "../utils/items";
 export function FeedPage() {
   const { feedId = "" } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const searchQuery = useUiStore((state) => state.searchQuery);
   const dateFilter = getDateFilter(searchParams);
@@ -61,6 +63,14 @@ export function FeedPage() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteFeed(feedId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feeds"] });
+      navigate("/feeds", { replace: true });
+    }
+  });
+
   const toggleSavedMutation = useMutation({
     mutationFn: (item: Item) => (item.is_saved ? unsaveItem(item.id) : saveItem(item.id)),
     onSuccess: () => {
@@ -84,28 +94,47 @@ export function FeedPage() {
   }
 
   const feed = feedQuery.data;
+  const feedName = feed?.name ?? "Поток";
 
   return (
     <section className="page-section">
       <div className="section-heading feed-heading">
         <div>
           <p className="eyebrow">{dateFilter.label}</p>
-          <h1>{feed?.name ?? "Поток"}</h1>
+          <h1>{feedName}</h1>
           {feed?.description ? <p>{feed.description}</p> : null}
         </div>
-        <button
-          className="secondary-button"
-          type="button"
-          disabled={refreshMutation.isPending}
-          onClick={() => refreshMutation.mutate()}
-        >
-          <RefreshCw size={17} aria-hidden className={refreshMutation.isPending ? "spin" : ""} />
-          {refreshMutation.isPending ? "Обновляем" : "Обновить"}
-        </button>
+        <div className="feed-heading-actions">
+          <button
+            className="secondary-button danger-action"
+            type="button"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (window.confirm(`Удалить поток "${feedName}"?`)) {
+                deleteMutation.mutate();
+              }
+            }}
+          >
+            <Trash2 size={17} aria-hidden />
+            {deleteMutation.isPending ? "Удаляем" : "Удалить"}
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={refreshMutation.isPending}
+            onClick={() => refreshMutation.mutate()}
+          >
+            <RefreshCw size={17} aria-hidden className={refreshMutation.isPending ? "spin" : ""} />
+            {refreshMutation.isPending ? "Обновляем" : "Обновить"}
+          </button>
+        </div>
       </div>
 
       {refreshMutation.isError ? (
         <ErrorState title="Обновление не удалось" message={errorMessage(refreshMutation.error)} />
+      ) : null}
+      {deleteMutation.isError ? (
+        <ErrorState title="Удаление не удалось" message={errorMessage(deleteMutation.error)} />
       ) : null}
       {itemsQuery.isError ? <ErrorState message={errorMessage(itemsQuery.error)} /> : null}
 
