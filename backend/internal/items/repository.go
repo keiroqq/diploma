@@ -2,6 +2,7 @@ package items
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -126,6 +127,54 @@ func (r *Repository) ListSaved(ctx context.Context, userID uuid.UUID, limit int)
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).
+		Find(&records).Error
+	return records, err
+}
+
+func (r *Repository) SearchAccessibleItems(ctx context.Context, userID uuid.UUID, query SearchQuery) ([]models.FeedItem, error) {
+	searchPattern := "%" + strings.ToLower(query.Query) + "%"
+	searchCondition := `(
+		LOWER(feed_items.title) LIKE ? OR
+		LOWER(feed_items.excerpt) LIKE ? OR
+		LOWER(feed_items.content_html) LIKE ? OR
+		LOWER(feed_items.author) LIKE ? OR
+		LOWER(sources.name) LIKE ? OR
+		LOWER(tags.name) LIKE ? OR
+		LOWER(categories.name) LIKE ?
+	)`
+	args := []any{
+		searchPattern,
+		searchPattern,
+		searchPattern,
+		searchPattern,
+		searchPattern,
+		searchPattern,
+		searchPattern,
+	}
+
+	db := r.db.WithContext(ctx).
+		Model(&models.FeedItem{}).
+		Distinct("feed_items.*").
+		Joins("JOIN feed_sources ON feed_sources.source_id = feed_items.source_id").
+		Joins("JOIN feeds ON feeds.id = feed_sources.feed_id").
+		Joins("JOIN sources ON sources.id = feed_items.source_id").
+		Joins("LEFT JOIN feed_item_tags ON feed_item_tags.item_id = feed_items.id").
+		Joins("LEFT JOIN tags ON tags.id = feed_item_tags.tag_id").
+		Joins("LEFT JOIN feed_item_categories ON feed_item_categories.item_id = feed_items.id").
+		Joins("LEFT JOIN categories ON categories.id = feed_item_categories.category_id").
+		Preload("Source").
+		Preload("Tags").
+		Preload("Categories").
+		Where("feeds.user_id = ? AND feed_sources.is_enabled = true", userID).
+		Where(searchCondition, args...)
+
+	if query.FeedID != nil {
+		db = db.Where("feed_sources.feed_id = ?", *query.FeedID)
+	}
+
+	var records []models.FeedItem
+	err := db.Order("feed_items.published_at DESC").
+		Limit(query.Limit).
 		Find(&records).Error
 	return records, err
 }

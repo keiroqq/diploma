@@ -149,6 +149,51 @@ func (s *Service) ListSaved(ctx context.Context, userID uuid.UUID, limit int) (*
 	return resp, nil
 }
 
+func (s *Service) SearchItems(ctx context.Context, userID uuid.UUID, query SearchQuery) (*SearchItemsResponse, error) {
+	query.Query = strings.TrimSpace(query.Query)
+	if query.Query == "" {
+		return nil, httpx.ErrInvalidInput
+	}
+	if query.Limit <= 0 {
+		query.Limit = 50
+	}
+	if query.Limit > 200 {
+		query.Limit = 200
+	}
+	if query.FeedID != nil {
+		exists, err := s.repo.FeedExistsForUser(ctx, *query.FeedID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, httpx.ErrNotFound
+		}
+	}
+
+	records, err := s.repo.SearchAccessibleItems(ctx, userID, query)
+	if err != nil {
+		return nil, err
+	}
+
+	itemIDs := make([]uuid.UUID, 0, len(records))
+	for _, record := range records {
+		itemIDs = append(itemIDs, record.ID)
+	}
+	saved, err := s.repo.SavedMap(ctx, userID, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &SearchItemsResponse{
+		Items: make([]ItemResponse, 0, len(records)),
+		Query: query.Query,
+	}
+	for _, record := range records {
+		resp.Items = append(resp.Items, itemResponse(record, 0, saved[record.ID]))
+	}
+	return resp, nil
+}
+
 func applyRules(items []models.FeedItem, rules []models.FilterRule) []scoredItem {
 	result := make([]scoredItem, 0, len(items))
 	includeRules := make([]models.FilterRule, 0)
@@ -301,6 +346,28 @@ func ParseListQuery(values map[string][]string) (ListQuery, error) {
 			return ListQuery{}, err
 		}
 		query.DateTo = &dateTo
+	}
+	return query, nil
+}
+
+func ParseSearchQuery(values map[string][]string) (SearchQuery, error) {
+	query := SearchQuery{
+		Query: strings.TrimSpace(firstQuery(values, "q")),
+		Limit: 50,
+	}
+	if rawLimit := firstQuery(values, "limit"); rawLimit != "" {
+		limit, err := strconv.Atoi(rawLimit)
+		if err != nil {
+			return SearchQuery{}, err
+		}
+		query.Limit = limit
+	}
+	if rawFeedID := firstQuery(values, "feed_id"); rawFeedID != "" {
+		feedID, err := uuid.Parse(rawFeedID)
+		if err != nil {
+			return SearchQuery{}, err
+		}
+		query.FeedID = &feedID
 	}
 	return query, nil
 }

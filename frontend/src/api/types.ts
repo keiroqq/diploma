@@ -107,6 +107,11 @@ export type SavedItemsResponse = {
   items: Item[];
 };
 
+export type SearchItemsResponse = {
+  items: Item[];
+  query: string;
+};
+
 export type RefreshResult = {
   sources: {
     source_id: string;

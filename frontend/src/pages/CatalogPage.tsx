@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Rss } from "lucide-react";
+import { Check, Loader2, Palette, Plus, Rss } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -19,6 +19,7 @@ export function CatalogPage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [feedName, setFeedName] = useState("Моя IT-лента");
+  const [themeColor, setThemeColor] = useState("#2563eb");
 
   const topicsQuery = useQuery({
     queryKey: ["catalogTopics"],
@@ -42,7 +43,7 @@ export function CatalogPage() {
         name: feedName.trim() || "Новая лента",
         description: sourceTitles ? `Источники: ${sourceTitles}` : "Лента из каталога",
         icon: "rss",
-        theme_color: "#2563eb",
+        theme_color: themeColor,
         layout_type: "cards"
       });
 
@@ -106,11 +107,30 @@ export function CatalogPage() {
             maxLength={120}
           />
         </label>
-        <div className="builder-summary">
-          <span>{selected.size} выбрано</span>
+        <div className="builder-actions">
+          <label
+            className="catalog-color-button"
+            title="Выбрать цвет"
+            aria-label="Выбрать цвет потока"
+          >
+            <input
+              type="color"
+              aria-label="Выбрать цвет потока"
+              value={themeColor}
+              onChange={(event) => setThemeColor(event.target.value)}
+            />
+            <span
+              className="catalog-color-swatch"
+              style={{ backgroundColor: themeColor }}
+              aria-hidden
+            />
+            <Palette size={17} aria-hidden />
+          </label>
           <button
-            className="primary-button"
+            className="primary-button catalog-create-button"
             type="button"
+            title={createFromCatalogMutation.isPending ? "Создаем поток" : "Создать поток"}
+            aria-label={createFromCatalogMutation.isPending ? "Создаем поток" : "Создать поток"}
             disabled={!selected.size || createFromCatalogMutation.isPending}
             onClick={() => createFromCatalogMutation.mutate()}
           >
@@ -119,9 +139,9 @@ export function CatalogPage() {
             ) : (
               <Plus size={18} aria-hidden />
             )}
-            {createFromCatalogMutation.isPending ? "Создаем поток" : "Создать поток"}
           </button>
         </div>
+        <span className="builder-selected-count">{selected.size} выбрано</span>
       </div>
 
       {createFromCatalogMutation.isError ? (

@@ -168,3 +168,25 @@ func TestParseListQueryCategoriesAndDateRange(t *testing.T) {
 		t.Fatalf("DateTo = %v, want exclusive 2026-05-13", query.DateTo)
 	}
 }
+
+func TestParseSearchQuery(t *testing.T) {
+	feedID := uuid.New()
+	query, err := ParseSearchQuery(map[string][]string{
+		"q":       {"  React hooks  "},
+		"feed_id": {feedID.String()},
+		"limit":   {"120"},
+	})
+	if err != nil {
+		t.Fatalf("ParseSearchQuery returned error: %v", err)
+	}
+
+	if query.Query != "React hooks" {
+		t.Fatalf("Query = %q, want React hooks", query.Query)
+	}
+	if query.FeedID == nil || *query.FeedID != feedID {
+		t.Fatalf("FeedID = %v, want %s", query.FeedID, feedID)
+	}
+	if query.Limit != 120 {
+		t.Fatalf("Limit = %d, want 120", query.Limit)
+	}
+}

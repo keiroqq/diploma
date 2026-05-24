@@ -11,6 +11,7 @@ import type {
   RefreshResult,
   RegisterRequest,
   SavedItemsResponse,
+  SearchItemsResponse,
   Topic,
   UpdateFeedRequest,
   User
@@ -223,6 +224,26 @@ export function unsaveItem(itemId: string) {
 
 export function listSavedItems() {
   return apiRequest<SavedItemsResponse>("/api/saved?limit=100");
+}
+
+export type SearchItemsOptions = {
+  feedId?: string;
+  limit?: number;
+};
+
+export function searchItems(query: string, options: SearchItemsOptions = {}) {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(options.limit ?? 200)
+  });
+
+  if (options.feedId) {
+    params.set("feed_id", options.feedId);
+  }
+
+  return apiRequest<SearchItemsResponse>(
+    `/api/items/search?${params.toString()}`
+  );
 }
 
 export type SaveToggleVariables = Pick<Item, "id" | "is_saved">;
