@@ -32,6 +32,32 @@ export type Feed = {
   updated_at: string;
 };
 
+export type Source = {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  feed_url: string;
+  description: string;
+  language: string;
+  is_public: boolean;
+  storage_mode: "server" | "local";
+  status: "active" | "pending" | "disabled" | "error";
+  last_fetched_at?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type FeedSource = {
+  id: string;
+  feed_id: string;
+  source_id: string;
+  is_enabled: boolean;
+  priority: number;
+  created_at: string;
+  source?: Source;
+};
+
 export type CreateFeedRequest = {
   name: string;
   description: string;

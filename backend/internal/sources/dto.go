@@ -14,6 +14,7 @@ type CreateSourceRequest struct {
 	Description string `json:"description" validate:"max=1000"`
 	Language    string `json:"language" validate:"max=16"`
 	IsPublic    bool   `json:"is_public"`
+	StorageMode string `json:"storage_mode" validate:"omitempty,oneof=server local"`
 }
 
 type UpdateSourceRequest struct {
@@ -24,6 +25,7 @@ type UpdateSourceRequest struct {
 	Description string `json:"description" validate:"max=1000"`
 	Language    string `json:"language" validate:"max=16"`
 	IsPublic    bool   `json:"is_public"`
+	StorageMode string `json:"storage_mode" validate:"omitempty,oneof=server local"`
 	Status      string `json:"status" validate:"omitempty,oneof=active pending disabled error"`
 }
 
@@ -37,6 +39,7 @@ type SourceResponse struct {
 	Description   string     `json:"description"`
 	Language      string     `json:"language"`
 	IsPublic      bool       `json:"is_public"`
+	StorageMode   string     `json:"storage_mode"`
 	Status        string     `json:"status"`
 	LastFetchedAt *time.Time `json:"last_fetched_at"`
 	CreatedAt     time.Time  `json:"created_at"`

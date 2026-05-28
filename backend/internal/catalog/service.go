@@ -3,12 +3,11 @@ package catalog
 import (
 	"context"
 	"errors"
-	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/models"
 )
@@ -20,10 +19,8 @@ type Service struct {
 
 func NewService(repo *Repository) *Service {
 	return &Service{
-		repo: repo,
-		discoverer: NewDiscoverer(&http.Client{
-			Timeout: 15 * time.Second,
-		}),
+		repo:       repo,
+		discoverer: NewDiscoverer(fetch.NewSafeHTTPClient(fetch.DefaultTimeout, fetch.DefaultMaxResponseBytes)),
 	}
 }
 
@@ -66,7 +63,7 @@ func (s *Service) ConnectCatalogSources(ctx context.Context, feedID uuid.UUID, u
 			return nil, err
 		}
 
-		source, err := s.findOrCreateSource(ctx, userID, catalogSource, discovered.FeedURL)
+		source, err := s.findOrCreateSource(ctx, catalogSource, discovered.FeedURL)
 		if err != nil {
 			return nil, err
 		}
@@ -97,8 +94,8 @@ func (s *Service) ConnectCatalogSources(ctx context.Context, feedID uuid.UUID, u
 	return response, nil
 }
 
-func (s *Service) findOrCreateSource(ctx context.Context, userID uuid.UUID, catalogSource CatalogSource, feedURL string) (*models.Source, error) {
-	source, err := s.repo.FindUserSourceByCatalogPage(ctx, userID, catalogSource.PageURL)
+func (s *Service) findOrCreateSource(ctx context.Context, catalogSource CatalogSource, feedURL string) (*models.Source, error) {
+	source, err := s.repo.FindPublicSourceByCatalogPage(ctx, catalogSource.PageURL)
 	if err == nil {
 		if source.FeedURL != feedURL {
 			if err := s.repo.UpdateSourceFeedURL(ctx, source.ID, feedURL); err != nil {
@@ -114,17 +111,22 @@ func (s *Service) findOrCreateSource(ctx context.Context, userID uuid.UUID, cata
 
 	source = &models.Source{
 		ID:          uuid.New(),
-		CreatedBy:   &userID,
+		CreatedBy:   nil,
 		Name:        "Habr: " + catalogSource.Title,
 		Type:        models.SourceTypeRSS,
 		URL:         catalogSource.PageURL,
 		FeedURL:     feedURL,
 		Description: catalogSource.Description,
 		Language:    "ru",
-		IsPublic:    false,
+		IsPublic:    true,
+		StorageMode: models.SourceStorageServer,
 		Status:      models.SourceStatusActive,
 	}
 	if err := s.repo.CreateSource(ctx, source); err != nil {
+		existing, findErr := s.repo.FindPublicSourceByCatalogPage(ctx, catalogSource.PageURL)
+		if findErr == nil {
+			return existing, nil
+		}
 		return nil, err
 	}
 	return source, nil

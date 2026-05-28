@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/models"
 )
@@ -48,6 +49,9 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, req CreateSource
 	if err := s.validate.Struct(req); err != nil {
 		return nil, err
 	}
+	if err := validateSourceURLs(req.URL, req.FeedURL); err != nil {
+		return nil, err
+	}
 
 	source := &models.Source{
 		ID:          uuid.New(),
@@ -59,6 +63,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, req CreateSource
 		Description: req.Description,
 		Language:    req.Language,
 		IsPublic:    req.IsPublic,
+		StorageMode: req.StorageMode,
 		Status:      models.SourceStatusActive,
 	}
 	if err := s.repo.Create(ctx, source); err != nil {
@@ -82,6 +87,9 @@ func (s *Service) Update(ctx context.Context, sourceID uuid.UUID, userID uuid.UU
 	if err := s.validate.Struct(req); err != nil {
 		return nil, err
 	}
+	if err := validateSourceURLs(req.URL, req.FeedURL); err != nil {
+		return nil, err
+	}
 
 	source.Name = req.Name
 	source.Type = req.Type
@@ -90,6 +98,7 @@ func (s *Service) Update(ctx context.Context, sourceID uuid.UUID, userID uuid.UU
 	source.Description = req.Description
 	source.Language = req.Language
 	source.IsPublic = req.IsPublic
+	source.StorageMode = req.StorageMode
 	source.Status = req.Status
 
 	if err := s.repo.Update(ctx, source); err != nil {
@@ -117,6 +126,7 @@ func normalizeCreate(req *CreateSourceRequest) {
 	req.FeedURL = strings.TrimSpace(req.FeedURL)
 	req.Description = strings.TrimSpace(req.Description)
 	req.Language = defaultString(strings.TrimSpace(req.Language), "ru")
+	req.StorageMode = defaultString(strings.TrimSpace(req.StorageMode), models.SourceStorageServer)
 }
 
 func normalizeUpdate(req *UpdateSourceRequest) {
@@ -126,6 +136,7 @@ func normalizeUpdate(req *UpdateSourceRequest) {
 	req.FeedURL = strings.TrimSpace(req.FeedURL)
 	req.Description = strings.TrimSpace(req.Description)
 	req.Language = defaultString(strings.TrimSpace(req.Language), "ru")
+	req.StorageMode = defaultString(strings.TrimSpace(req.StorageMode), models.SourceStorageServer)
 	req.Status = defaultString(strings.TrimSpace(req.Status), models.SourceStatusActive)
 }
 
@@ -140,6 +151,7 @@ func sourceResponse(source models.Source) SourceResponse {
 		Description:   source.Description,
 		Language:      source.Language,
 		IsPublic:      source.IsPublic,
+		StorageMode:   source.StorageMode,
 		Status:        source.Status,
 		LastFetchedAt: source.LastFetchedAt,
 		CreatedAt:     source.CreatedAt,
@@ -152,6 +164,18 @@ func defaultString(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func validateSourceURLs(pageURL string, feedURL string) error {
+	if strings.TrimSpace(pageURL) != "" {
+		if err := fetch.ValidateURL(pageURL); err != nil {
+			return httpx.ErrInvalidInput
+		}
+	}
+	if err := fetch.ValidateURL(feedURL); err != nil {
+		return httpx.ErrInvalidInput
+	}
+	return nil
 }
 
 func mapGormNotFound(err error) error {

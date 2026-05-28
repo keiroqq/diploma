@@ -192,6 +192,31 @@ definitions:
       updated_at:
         type: string
     type: object
+  feeds.FeedSourceDetails:
+    properties:
+      description:
+        type: string
+      feed_url:
+        type: string
+      id:
+        type: string
+      is_public:
+        type: boolean
+      language:
+        type: string
+      last_fetched_at:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      storage_mode:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
   feeds.FeedSourceResponse:
     properties:
       created_at:
@@ -204,6 +229,8 @@ definitions:
         type: boolean
       priority:
         type: integer
+      source:
+        $ref: '#/definitions/feeds.FeedSourceDetails'
       source_id:
         type: string
     type: object
@@ -358,6 +385,15 @@ definitions:
           $ref: '#/definitions/items.ItemResponse'
         type: array
     type: object
+  items.SearchItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/items.ItemResponse'
+        type: array
+      query:
+        type: string
+    type: object
   rss.RefreshResult:
     properties:
       errors:
@@ -412,6 +448,11 @@ definitions:
         maxLength: 160
         minLength: 2
         type: string
+      storage_mode:
+        enum:
+        - server
+        - local
+        type: string
       type:
         enum:
         - rss
@@ -444,6 +485,8 @@ definitions:
         type: string
       status:
         type: string
+      storage_mode:
+        type: string
       type:
         type: string
       updated_at:
@@ -473,6 +516,11 @@ definitions:
         - pending
         - disabled
         - error
+        type: string
+      storage_mode:
+        enum:
+        - server
+        - local
         type: string
       type:
         enum:
@@ -960,17 +1008,66 @@ paths:
       summary: Подключить источники каталога к ленте
       tags:
       - catalog
-  /api/feeds/{id}/items:
+  /api/feeds/{id}/categories:
     get:
-      description: mode=today возвращает сегодняшние материалы, mode=archive возвращает
-        архивные материалы с cursor-пагинацией.
+      description: Возвращает только категории, которые соответствуют подключенным
+        источникам выбранной ленты.
       parameters:
       - description: Feed ID
         in: path
         name: id
         required: true
         type: string
-      - description: today или archive
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/categories.CategoryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить категории ленты
+      tags:
+      - categories
+  /api/feeds/{id}/items:
+    get:
+      description: mode=today возвращает сегодняшние материалы, mode=archive возвращает
+        архивные материалы с cursor-пагинацией, mode=all возвращает материалы без
+        ограничения по дате.
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: today, archive или all
         in: query
         name: mode
         type: string
@@ -985,6 +1082,18 @@ paths:
       - description: Slug категории, например ai или backend
         in: query
         name: category
+        type: string
+      - description: Slugs категорий через запятую, например ai,backend
+        in: query
+        name: categories
+        type: string
+      - description: Дата начала в формате YYYY-MM-DD или RFC3339
+        in: query
+        name: date_from
+        type: string
+      - description: Дата конца в формате YYYY-MM-DD или RFC3339
+        in: query
+        name: date_to
         type: string
       produces:
       - application/json
@@ -1265,6 +1374,51 @@ paths:
       tags:
       - filter-rules
   /api/feeds/{id}/sources:
+    get:
+      parameters:
+      - description: Feed ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/feeds.FeedSourceResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить источники ленты
+      tags:
+      - feeds
     post:
       consumes:
       - application/json
@@ -1434,6 +1588,60 @@ paths:
       summary: Сохранить материал в избранное
       tags:
       - saved
+  /api/items/search:
+    get:
+      description: Ищет по материалам из доступных пользователю потоков. Если передан
+        feed_id, область поиска сужается до этого потока.
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Feed ID для поиска внутри одного потока
+        in: query
+        name: feed_id
+        type: string
+      - description: Лимит, максимум 200
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/items.SearchItemsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Поиск материалов
+      tags:
+      - items
   /api/saved:
     get:
       parameters:

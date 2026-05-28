@@ -232,6 +232,12 @@ img {
   color: var(--text);
 }
 
+.icon-button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .danger-button {
   color: var(--danger);
 }
@@ -536,6 +542,7 @@ img {
 }
 
 .feed-pill {
+  --feed-pill-color: var(--accent);
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
@@ -543,10 +550,10 @@ img {
   min-width: 0;
   max-width: clamp(116px, 18vw, 168px);
   min-height: 38px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--feed-pill-color) 24%, var(--border));
   border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-soft);
+  background: color-mix(in srgb, var(--feed-pill-color) 8%, var(--surface));
+  color: color-mix(in srgb, var(--feed-pill-color) 46%, var(--text-soft));
   font-size: 14px;
   font-weight: 800;
   padding: 0 14px;
@@ -565,9 +572,9 @@ img {
 .feed-pill:hover,
 .feed-pill:focus-visible,
 .feed-pill.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--feed-pill-color) 72%, var(--border));
+  background: color-mix(in srgb, var(--feed-pill-color) 22%, var(--surface));
+  color: color-mix(in srgb, var(--feed-pill-color) 78%, var(--text));
 }
 
 .filter-panel {
@@ -750,6 +757,15 @@ img {
   display: grid;
   max-height: 280px;
   overflow-y: auto;
+}
+
+.category-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 8px;
 }
 
 .checkbox-row {
@@ -1013,6 +1029,121 @@ img {
 .feed-heading-actions .icon-button {
   width: 36px;
   height: 36px;
+}
+
+.feed-sources-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.feed-sources-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feed-sources-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.feed-sources-heading p,
+.feed-sources-status {
+  margin: 4px 0 0;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.feed-sources-status {
+  margin: 0;
+  font-weight: 700;
+}
+
+.feed-sources-status.error {
+  color: var(--danger);
+}
+
+.feed-source-list {
+  display: grid;
+  gap: 8px;
+}
+
+.feed-source-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.feed-source-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.feed-source-main strong,
+.feed-source-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-source-main strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.feed-source-main > span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.feed-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.feed-source-meta span {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 8px;
+  text-transform: uppercase;
+}
+
+.feed-source-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.feed-source-actions .icon-button {
+  width: 34px;
+  height: 34px;
 }
 
 .section-heading h1,
@@ -1418,6 +1549,12 @@ img {
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: 0 8px 22px rgb(15 23 42 / 8%);
   backdrop-filter: blur(12px);
+}
+
+.catalog-builder.existing-feed {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "selected actions";
+  align-items: center;
 }
 
 .catalog-builder > label:not(.catalog-color-button) {
@@ -2018,6 +2155,10 @@ img {
       "name name"
       "selected actions";
     align-items: center;
+  }
+
+  .catalog-builder.existing-feed {
+    grid-template-areas: "selected actions";
   }
 
   .builder-actions {

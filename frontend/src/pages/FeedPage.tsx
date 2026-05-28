@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, RefreshCw, Rss, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Rss, Trash2 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   deleteFeed,
   getFeed,
+  listFeedSources,
   listFeedItems,
+  refreshSource,
+  removeFeedSource,
   refreshFeed,
   saveItem,
   unsaveItem
@@ -28,6 +31,7 @@ export function FeedPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editingOpen, setEditingOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const searchQuery = useUiStore((state) => state.searchQuery);
   const dateFilter = getDateFilter(searchParams);
   const selectedCategories = getSelectedCategorySlugs(searchParams);
@@ -57,10 +61,17 @@ export function FeedPage() {
     enabled: Boolean(feedId)
   });
 
+  const feedSourcesQuery = useQuery({
+    queryKey: ["feedSources", feedId],
+    queryFn: () => listFeedSources(feedId),
+    enabled: Boolean(feedId) && sourcesOpen
+  });
+
   const refreshMutation = useMutation({
     mutationFn: () => refreshFeed(feedId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
       queryClient.invalidateQueries({ queryKey: ["saved"] });
     }
   });
@@ -70,6 +81,25 @@ export function FeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feeds"] });
       navigate("/feeds", { replace: true });
+    }
+  });
+
+  const refreshSourceMutation = useMutation({
+    mutationFn: refreshSource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedSources", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["saved"] });
+    }
+  });
+
+  const removeSourceMutation = useMutation({
+    mutationFn: (sourceId: string) => removeFeedSource(feedId, sourceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feedSources", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
     }
   });
 
@@ -110,6 +140,16 @@ export function FeedPage() {
           <div className="feed-heading-meta">
             <p className="eyebrow">{dateFilter.label}</p>
             <div className="feed-heading-actions">
+              <button
+                className={`icon-button ${sourcesOpen ? "active" : ""}`}
+                type="button"
+                title="Источники"
+                aria-label={`Источники ${feedName}`}
+                aria-expanded={sourcesOpen}
+                onClick={() => setSourcesOpen((open) => !open)}
+              >
+                <Rss size={17} aria-hidden />
+              </button>
               <button
                 className="icon-button"
                 type="button"
@@ -157,7 +197,105 @@ export function FeedPage() {
       {deleteMutation.isError ? (
         <ErrorState title="Удаление не удалось" message={errorMessage(deleteMutation.error)} />
       ) : null}
+      {refreshSourceMutation.isError ? (
+        <ErrorState title="Источник не обновлен" message={errorMessage(refreshSourceMutation.error)} />
+      ) : null}
+      {removeSourceMutation.isError ? (
+        <ErrorState title="Источник не отключен" message={errorMessage(removeSourceMutation.error)} />
+      ) : null}
       {itemsQuery.isError ? <ErrorState message={errorMessage(itemsQuery.error)} /> : null}
+
+      {sourcesOpen ? (
+        <section className="feed-sources-panel" aria-label="Источники ленты">
+          <div className="feed-sources-heading">
+            <div>
+              <h2>Источники</h2>
+              <p>RSS-источники, подключенные к этому потоку.</p>
+            </div>
+            <button
+              className="icon-button"
+              type="button"
+              title="Добавить источник"
+              aria-label="Добавить источник"
+              onClick={() => navigate(`/catalog?feed_id=${feedId}`)}
+            >
+              <Plus size={18} aria-hidden />
+            </button>
+          </div>
+
+          {feedSourcesQuery.isLoading ? (
+            <p className="feed-sources-status">Загружаем источники...</p>
+          ) : null}
+          {feedSourcesQuery.isError ? (
+            <p className="feed-sources-status error">{errorMessage(feedSourcesQuery.error)}</p>
+          ) : null}
+          {!feedSourcesQuery.isLoading && !feedSourcesQuery.isError && !feedSourcesQuery.data?.length ? (
+            <p className="feed-sources-status">В ленте пока нет источников.</p>
+          ) : null}
+
+          {feedSourcesQuery.data?.length ? (
+            <div className="feed-source-list">
+              {feedSourcesQuery.data.map((link) => {
+                const source = link.source;
+                const sourceName = source?.name ?? "Источник";
+                const sourceURL = source?.feed_url ?? "";
+                const storageMode = source?.storage_mode === "local" ? "Локально" : "Сервер";
+
+                return (
+                  <article className="feed-source-row" key={link.id}>
+                    <div className="feed-source-main">
+                      <strong>{sourceName}</strong>
+                      {sourceURL ? <span>{sourceURL}</span> : null}
+                      <div className="feed-source-meta">
+                        <span>{storageMode}</span>
+                        {source?.status ? <span>{source.status}</span> : null}
+                      </div>
+                    </div>
+                    <div className="feed-source-actions">
+                      <button
+                        className="icon-button"
+                        type="button"
+                        title="Обновить источник"
+                        aria-label={`Обновить ${sourceName}`}
+                        disabled={
+                          refreshSourceMutation.isPending ||
+                          source?.storage_mode === "local"
+                        }
+                        onClick={() => refreshSourceMutation.mutate(link.source_id)}
+                      >
+                        <RefreshCw
+                          size={17}
+                          aria-hidden
+                          className={
+                            refreshSourceMutation.isPending &&
+                            refreshSourceMutation.variables === link.source_id
+                              ? "spin"
+                              : ""
+                          }
+                        />
+                      </button>
+                      <button
+                        className="icon-button danger-button"
+                        type="button"
+                        title="Отключить источник"
+                        aria-label={`Отключить ${sourceName}`}
+                        disabled={removeSourceMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Отключить источник "${sourceName}" от потока?`)) {
+                            removeSourceMutation.mutate(link.source_id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={17} aria-hidden />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {!itemsQuery.isError && !items.length ? (
         <EmptyState

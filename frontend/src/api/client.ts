@@ -5,6 +5,7 @@ import type {
   ConnectCatalogSourcesResponse,
   CreateFeedRequest,
   Feed,
+  FeedSource,
   FeedItemsResponse,
   Item,
   LoginRequest,
@@ -157,6 +158,16 @@ export function deleteFeed(feedId: string) {
   });
 }
 
+export function listFeedSources(feedId: string) {
+  return apiRequest<FeedSource[]>(`/api/feeds/${feedId}/sources`);
+}
+
+export function removeFeedSource(feedId: string, sourceId: string) {
+  return apiRequest<void>(`/api/feeds/${feedId}/sources/${sourceId}`, {
+    method: "DELETE"
+  });
+}
+
 export function connectCatalogSources(feedId: string, sourceIds: string[]) {
   return apiRequest<ConnectCatalogSourcesResponse>(
     `/api/feeds/${feedId}/catalog-sources`,
@@ -173,12 +184,22 @@ export function refreshFeed(feedId: string) {
   });
 }
 
+export function refreshSource(sourceId: string) {
+  return apiRequest<RefreshResult>(`/api/sources/${sourceId}/refresh`, {
+    method: "POST"
+  });
+}
+
 export function listCatalogTopics() {
   return apiRequest<Topic[]>("/api/catalog/topics");
 }
 
 export function listCategories() {
   return apiRequest<Category[]>("/api/categories");
+}
+
+export function listFeedCategories(feedId: string) {
+  return apiRequest<Category[]>(`/api/feeds/${feedId}/categories`);
 }
 
 export type ListFeedItemsParams = {

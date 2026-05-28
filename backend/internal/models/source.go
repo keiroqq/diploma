@@ -13,6 +13,9 @@ const (
 	SourceStatusPending  = "pending"
 	SourceStatusDisabled = "disabled"
 	SourceStatusError    = "error"
+
+	SourceStorageServer = "server"
+	SourceStorageLocal  = "local"
 )
 
 type Source struct {
@@ -25,6 +28,7 @@ type Source struct {
 	Description   string     `gorm:"not null" json:"description"`
 	Language      string     `gorm:"not null" json:"language"`
 	IsPublic      bool       `gorm:"not null;index" json:"is_public"`
+	StorageMode   string     `gorm:"not null;default:server;index" json:"storage_mode"`
 	Status        string     `gorm:"not null" json:"status"`
 	LastFetchedAt *time.Time `json:"last_fetched_at"`
 	CreatedAt     time.Time  `json:"created_at"`

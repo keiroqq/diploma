@@ -32,6 +32,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/feeds/{id}", h.Get)
 	r.Put("/feeds/{id}", h.Update)
 	r.Delete("/feeds/{id}", h.Delete)
+	r.Get("/feeds/{id}/sources", h.ListSources)
 	r.Post("/feeds/{id}/sources", h.AddSource)
 	r.Delete("/feeds/{id}/sources/{sourceId}", h.RemoveSource)
 	r.Post("/feeds/{id}/refresh", h.Refresh)
@@ -221,6 +222,36 @@ func (h *Handler) AddSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.RespondJSON(w, http.StatusCreated, resp)
+}
+
+// ListSources godoc
+// @Summary Получить источники ленты
+// @Tags feeds
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Feed ID"
+// @Success 200 {array} FeedSourceResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/feeds/{id}/sources [get]
+func (h *Handler) ListSources(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	feedID, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.ListSources(r.Context(), feedID, userID)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, resp)
 }
 
 // RemoveSource godoc

@@ -36,6 +36,7 @@ import {
 import {
   getMe,
   listCategories,
+  listFeedCategories,
   listFeeds,
   saveItem,
   searchItems,
@@ -53,6 +54,12 @@ import {
   localDateString,
   type DatePreset
 } from "../utils/filters";
+
+function feedPillStyle(themeColor?: string): CSSProperties {
+  return {
+    "--feed-pill-color": themeColor || "#2563eb"
+  } as CSSProperties;
+}
 
 export function AppShell() {
   const location = useLocation();
@@ -107,12 +114,6 @@ export function AppShell() {
     staleTime: 5 * 60_000
   });
 
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: listCategories,
-    enabled: Boolean(token)
-  });
-
   useEffect(() => {
     if (meQuery.data) {
       setUser(meQuery.data);
@@ -126,9 +127,27 @@ export function AppShell() {
   const searchScopeFeed = searchScope.type === "feed"
     ? feedsQuery.data?.find((feed) => feed.id === searchScope.feedId)
     : undefined;
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    enabled: Boolean(token) && !isFeedRoute
+  });
+
+  const feedCategoriesQuery = useQuery({
+    queryKey: ["feedCategories", feedId],
+    queryFn: () => listFeedCategories(feedId ?? ""),
+    enabled: Boolean(token) && isFeedRoute
+  });
+
   const dateFilter = getDateFilter(searchParams);
   const selectedCategories = getSelectedCategorySlugs(searchParams);
-  const categories = categoriesQuery.data ?? [];
+  const categories = isFeedRoute
+    ? feedCategoriesQuery.data ?? []
+    : categoriesQuery.data ?? [];
+  const categoriesLoading = isFeedRoute
+    ? feedCategoriesQuery.isLoading
+    : categoriesQuery.isLoading;
   const categoryLabel = categoryFilterLabel(categories, selectedCategories);
   const headerOffset = hasFeedTools ? "132px" : "64px";
   const popoverOpen = dateMenuOpen || categoryMenuOpen;
@@ -205,6 +224,35 @@ export function AppShell() {
   useEffect(() => {
     setDraftCategories(selectedCategories);
   }, [selectedCategories.join(",")]);
+
+  useEffect(() => {
+    if (!isFeedRoute || !feedCategoriesQuery.isSuccess || !selectedCategories.length) {
+      return;
+    }
+
+    const availableSlugs = new Set(categories.map((category) => category.slug));
+    const nextSelected = selectedCategories.filter((slug) => availableSlugs.has(slug));
+    if (nextSelected.length === selectedCategories.length) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("category");
+    nextParams.delete("categories");
+    if (nextSelected.length) {
+      nextParams.set("categories", nextSelected.join(","));
+    }
+
+    setDraftCategories(nextSelected);
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    categories,
+    feedCategoriesQuery.isSuccess,
+    isFeedRoute,
+    searchParams,
+    selectedCategories.join(","),
+    setSearchParams
+  ]);
 
   useEffect(() => {
     if (!isFeedRoute) {
@@ -742,6 +790,7 @@ export function AppShell() {
                           feedPillRefs.current[feed.id] = node;
                         }}
                         type="button"
+                        style={feedPillStyle(feed.theme_color)}
                         onClick={() => setSearchScope({ type: "feed", feedId: feed.id })}
                       >
                         <span className="feed-pill-label">{feed.name}</span>
@@ -756,6 +805,7 @@ export function AppShell() {
                           feedPillRefs.current[feed.id] = node;
                         }}
                         to={`/feeds/${feed.id}${location.search}`}
+                        style={feedPillStyle(feed.theme_color)}
                       >
                         <span className="feed-pill-label">{feed.name}</span>
                       </NavLink>
@@ -890,21 +940,29 @@ export function AppShell() {
                     {categoryMenuOpen ? (
                       <div className="filter-popover category-popover" role="menu">
                         <div className="category-options">
-                          {categories.map((category) => (
-                            <label className="checkbox-row" key={category.id}>
-                              <input
-                                type="checkbox"
-                                checked={draftCategories.includes(category.slug)}
-                                onChange={() => toggleDraftCategory(category.slug)}
-                              />
-                              <span className="custom-checkbox">
-                                {draftCategories.includes(category.slug) ? (
-                                  <Check size={14} aria-hidden />
-                                ) : null}
-                              </span>
-                              {category.name}
-                            </label>
-                          ))}
+                          {categoriesLoading ? (
+                            <p className="category-empty">Загружаем темы...</p>
+                          ) : null}
+                          {!categoriesLoading && !categories.length ? (
+                            <p className="category-empty">В этом потоке пока нет тем.</p>
+                          ) : null}
+                          {!categoriesLoading
+                            ? categories.map((category) => (
+                              <label className="checkbox-row" key={category.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={draftCategories.includes(category.slug)}
+                                  onChange={() => toggleDraftCategory(category.slug)}
+                                />
+                                <span className="custom-checkbox">
+                                  {draftCategories.includes(category.slug) ? (
+                                    <Check size={14} aria-hidden />
+                                  ) : null}
+                                </span>
+                                {category.name}
+                              </label>
+                            ))
+                            : null}
                         </div>
                         <div className="popover-actions">
                           <button

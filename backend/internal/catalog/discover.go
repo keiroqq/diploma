@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/keiro/content-digest/backend/internal/fetch"
 )
 
 var ErrRSSNotFound = errors.New("rss feed not found")
@@ -67,6 +69,9 @@ func discoverFromHTML(pageURL *url.URL, body io.Reader) (DiscoverResponse, error
 		if err != nil {
 			return true
 		}
+		if err := fetch.ValidateURL(resolved); err != nil {
+			return true
+		}
 		feedURL = resolved
 		return false
 	})
@@ -87,15 +92,12 @@ func validatePageURL(value string) (*url.URL, error) {
 	if value == "" {
 		return nil, errors.New("page_url is required")
 	}
+	if err := fetch.ValidateURL(value); err != nil {
+		return nil, err
+	}
 	parsed, err := url.Parse(value)
 	if err != nil {
 		return nil, err
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return nil, errors.New("page_url must use http or https")
-	}
-	if parsed.Host == "" {
-		return nil, errors.New("page_url host is required")
 	}
 	return parsed, nil
 }
