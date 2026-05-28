@@ -169,11 +169,11 @@ func defaultString(value string, fallback string) string {
 func validateSourceURLs(pageURL string, feedURL string) error {
 	if strings.TrimSpace(pageURL) != "" {
 		if err := fetch.ValidateURL(pageURL); err != nil {
-			return httpx.ErrInvalidInput
+			return err
 		}
 	}
 	if err := fetch.ValidateURL(feedURL); err != nil {
-		return httpx.ErrInvalidInput
+		return err
 	}
 	return nil
 }

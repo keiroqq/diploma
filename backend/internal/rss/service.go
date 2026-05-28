@@ -3,6 +3,7 @@ package rss
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -44,6 +45,28 @@ type SourceRefreshResult struct {
 	LastFetchedAt *time.Time `json:"last_fetched_at,omitempty"`
 }
 
+type PreviewItemsResponse struct {
+	SourceID uuid.UUID             `json:"source_id"`
+	FeedURL  string                `json:"feed_url"`
+	Items    []PreviewItemResponse `json:"items"`
+}
+
+type PreviewItemResponse struct {
+	ID            string    `json:"id"`
+	SourceID      uuid.UUID `json:"source_id"`
+	SourceName    string    `json:"source_name"`
+	Title         string    `json:"title"`
+	URL           string    `json:"url"`
+	Excerpt       string    `json:"excerpt"`
+	ImageURL      string    `json:"image_url"`
+	Author        string    `json:"author"`
+	PublishedAt   time.Time `json:"published_at"`
+	Tags          []string  `json:"tags"`
+	Categories    []string  `json:"categories"`
+	CategorySlugs []string  `json:"category_slugs"`
+	SearchText    string    `json:"search_text"`
+}
+
 func NewService(db *gorm.DB, refreshCooldown time.Duration, logger *slog.Logger) *Service {
 	cleaner := NewCleaner()
 	return &Service{
@@ -66,6 +89,50 @@ func (s *Service) RefreshSource(ctx context.Context, sourceID uuid.UUID, userID 
 		return nil, err
 	}
 	return aggregateSingle(result), nil
+}
+
+func (s *Service) PreviewSourceItems(ctx context.Context, sourceID uuid.UUID, userID uuid.UUID) (any, error) {
+	source, err := s.getAccessibleSource(ctx, sourceID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if source.Type != models.SourceTypeRSS {
+		return nil, httpx.ErrNotImplemented
+	}
+	if source.Status == models.SourceStatusDisabled {
+		return nil, httpx.ErrSourceDisabled
+	}
+
+	feed, err := s.parser.ParseURL(ctx, source.FeedURL)
+	if err != nil {
+		s.markSourceStatus(ctx, source.ID, models.SourceStatusError, nil)
+		return nil, fmt.Errorf("%w: %v", httpx.ErrFeedFetchFailed, err)
+	}
+
+	items := make([]PreviewItemResponse, 0, len(feed.Items))
+	for _, item := range feed.Items {
+		normalized, tags, err := s.normalizer.Normalize(source.ID, item)
+		if err != nil {
+			return nil, err
+		}
+
+		categorySlugs := categorySlugsForTags(tags)
+		categoryNames, err := s.categoryNamesBySlug(ctx, categorySlugs)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, previewItemResponse(*source, normalized, tags, categorySlugs, categoryNames))
+	}
+
+	now := time.Now()
+	s.markSourceStatus(ctx, source.ID, models.SourceStatusActive, &now)
+
+	return &PreviewItemsResponse{
+		SourceID: source.ID,
+		FeedURL:  source.FeedURL,
+		Items:    items,
+	}, nil
 }
 
 func (s *Service) RefreshFeed(ctx context.Context, feedID uuid.UUID, userID uuid.UUID) (any, error) {
@@ -325,6 +392,55 @@ func linkCategoriesForTags(tx *gorm.DB, itemID uuid.UUID, tags []string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Service) categoryNamesBySlug(ctx context.Context, slugs []string) (map[string]string, error) {
+	if len(slugs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	var categories []models.Category
+	if err := s.db.WithContext(ctx).Where("slug IN ?", slugs).Find(&categories).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]string, len(categories))
+	for _, category := range categories {
+		result[category.Slug] = category.Name
+	}
+	return result, nil
+}
+
+func previewItemResponse(source models.Source, item models.FeedItem, tags []string, categorySlugs []string, categoryNames map[string]string) PreviewItemResponse {
+	categories := make([]string, 0, len(categorySlugs))
+	for _, slug := range categorySlugs {
+		if name := categoryNames[slug]; name != "" {
+			categories = append(categories, name)
+		}
+	}
+
+	return PreviewItemResponse{
+		ID:            "local:" + item.ContentHash,
+		SourceID:      item.SourceID,
+		SourceName:    source.Name,
+		Title:         item.Title,
+		URL:           item.URL,
+		Excerpt:       item.Excerpt,
+		ImageURL:      item.ImageURL,
+		Author:        item.Author,
+		PublishedAt:   item.PublishedAt,
+		Tags:          tags,
+		Categories:    categories,
+		CategorySlugs: categorySlugs,
+		SearchText: strings.ToLower(strings.Join([]string{
+			item.Title,
+			item.Excerpt,
+			item.Author,
+			source.Name,
+			strings.Join(tags, " "),
+			strings.Join(categories, " "),
+		}, " ")),
+	}
 }
 
 func normalizeTagSlug(name string) string {

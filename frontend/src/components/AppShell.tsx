@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
+  Database,
   Filter,
   Globe2,
   LogOut,
@@ -54,11 +55,16 @@ import {
   localDateString,
   type DatePreset
 } from "../utils/filters";
+import { searchLocalItems, toggleLocalItemSaved } from "../utils/localItems";
 
 function feedPillStyle(themeColor?: string): CSSProperties {
   return {
     "--feed-pill-color": themeColor || "#2563eb"
   } as CSSProperties;
+}
+
+function byPublishedDesc(left: Item, right: Item) {
+  return new Date(right.published_at).getTime() - new Date(left.published_at).getTime();
 }
 
 export function AppShell() {
@@ -163,6 +169,9 @@ export function AppShell() {
     if (location.pathname === "/saved") {
       return "Избранное";
     }
+    if (location.pathname === "/sources") {
+      return "Источники";
+    }
     if (feedId) {
       return currentFeed?.name ?? "Поток";
     }
@@ -193,7 +202,32 @@ export function AppShell() {
       (searchScope.type === "feed" ? Boolean(searchScope.feedId) : true)
   });
 
-  const searchResults = searchItemsQuery.data?.items ?? [];
+  const localSearchItemsQuery = useQuery({
+    queryKey: [
+      "localSearchItems",
+      searchScope.type,
+      searchScope.type === "feed" ? searchScope.feedId : null,
+      normalizedSearchQuery
+    ],
+    queryFn: () =>
+      searchLocalItems(
+        normalizedSearchQuery,
+        searchScope.type === "feed" ? searchScope.feedId : undefined
+      ),
+    enabled:
+      searchOpen &&
+      normalizedSearchQuery.length > 0 &&
+      (searchScope.type === "feed" ? Boolean(searchScope.feedId) : true)
+  });
+
+  const searchResults = useMemo(
+    () =>
+      [
+        ...(searchItemsQuery.data?.items ?? []),
+        ...(localSearchItemsQuery.data ?? [])
+      ].sort(byPublishedDesc),
+    [localSearchItemsQuery.data, searchItemsQuery.data?.items]
+  );
 
   const toggleSearchSavedMutation = useMutation({
     mutationFn: (item: Item) => (item.is_saved ? unsaveItem(item.id) : saveItem(item.id)),
@@ -201,6 +235,14 @@ export function AppShell() {
       queryClient.invalidateQueries({ queryKey: ["feedItems"] });
       queryClient.invalidateQueries({ queryKey: ["saved"] });
       queryClient.invalidateQueries({ queryKey: ["searchItems"] });
+    }
+  });
+
+  const toggleLocalSearchSavedMutation = useMutation({
+    mutationFn: toggleLocalItemSaved,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems"] });
+      queryClient.invalidateQueries({ queryKey: ["localSearchItems"] });
     }
   });
 
@@ -553,8 +595,8 @@ export function AppShell() {
   function renderSearchSurface() {
     const searchLoading =
       normalizedSearchQuery.length > 0 &&
-      searchItemsQuery.isLoading;
-    const searchError = searchItemsQuery.error;
+      (searchItemsQuery.isLoading || localSearchItemsQuery.isLoading);
+    const searchError = searchItemsQuery.error ?? localSearchItemsQuery.error;
 
     if (!normalizedSearchQuery) {
       return (
@@ -623,10 +665,19 @@ export function AppShell() {
               key={item.id}
               item={item}
               isSaving={
-                toggleSearchSavedMutation.isPending &&
-                toggleSearchSavedMutation.variables?.id === item.id
+                item.storage_mode === "local"
+                  ? toggleLocalSearchSavedMutation.isPending &&
+                    toggleLocalSearchSavedMutation.variables === item.id
+                  : toggleSearchSavedMutation.isPending &&
+                    toggleSearchSavedMutation.variables?.id === item.id
               }
-              onToggleSaved={(nextItem) => toggleSearchSavedMutation.mutate(nextItem)}
+              onToggleSaved={(nextItem) => {
+                if (nextItem.storage_mode === "local") {
+                  toggleLocalSearchSavedMutation.mutate(nextItem.id);
+                } else {
+                  toggleSearchSavedMutation.mutate(nextItem);
+                }
+              }}
             />
           ))}
         </div>
@@ -999,16 +1050,6 @@ export function AppShell() {
       />
 
       <aside className={`drawer ${drawerOpen ? "open" : ""}`} aria-label="Навигация">
-        <div className="drawer-brand">
-          <span className="brand-mark">
-            <Rss size={22} aria-hidden />
-          </span>
-          <div>
-            <strong>Content Digest</strong>
-            <span>RSS-потоки</span>
-          </div>
-        </div>
-
         <nav className="drawer-nav">
           <NavLink
             className={({ isActive }) => `drawer-link ${isActive ? "active" : ""}`}
@@ -1034,6 +1075,14 @@ export function AppShell() {
           >
             <Bookmark size={18} aria-hidden />
             Избранное
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `drawer-link ${isActive ? "active" : ""}`}
+            to="/sources"
+            onClick={closeDrawer}
+          >
+            <Database size={18} aria-hidden />
+            Источники
           </NavLink>
 
           <div className="drawer-section-title">Потоки</div>

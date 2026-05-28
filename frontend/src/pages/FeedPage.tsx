@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, RefreshCw, Rss, Trash2 } from "lucide-react";
+import { Database, Pencil, Plus, RefreshCw, Rss, Trash2 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
+  addFeedSource,
+  createSource,
   deleteFeed,
   getFeed,
   listFeedSources,
   listFeedItems,
+  previewSourceItems,
   refreshSource,
   removeFeedSource,
   refreshFeed,
@@ -24,6 +27,13 @@ import { useUiStore } from "../store/ui";
 import { errorMessage } from "../utils/errors";
 import { getDateFilter, getSelectedCategorySlugs } from "../utils/filters";
 import { filterItemsByQuery } from "../utils/items";
+import {
+  cacheLocalSourceItems,
+  filterLocalItems,
+  listLocalFeedItems,
+  removeLocalItemsBySource,
+  toggleLocalItemSaved
+} from "../utils/localItems";
 
 export function FeedPage() {
   const { feedId = "" } = useParams();
@@ -32,6 +42,8 @@ export function FeedPage() {
   const queryClient = useQueryClient();
   const [editingOpen, setEditingOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [localSourceName, setLocalSourceName] = useState("");
+  const [localSourceURL, setLocalSourceURL] = useState("");
   const searchQuery = useUiStore((state) => state.searchQuery);
   const dateFilter = getDateFilter(searchParams);
   const selectedCategories = getSelectedCategorySlugs(searchParams);
@@ -64,13 +76,55 @@ export function FeedPage() {
   const feedSourcesQuery = useQuery({
     queryKey: ["feedSources", feedId],
     queryFn: () => listFeedSources(feedId),
-    enabled: Boolean(feedId) && sourcesOpen
+    enabled: Boolean(feedId)
   });
 
+  const localItemsQuery = useQuery({
+    queryKey: ["localFeedItems", feedId],
+    queryFn: () => listLocalFeedItems(feedId),
+    enabled: Boolean(feedId)
+  });
+
+  async function refreshLocalSource(sourceID: string) {
+    const fetchedLinks = await queryClient.fetchQuery({
+      queryKey: ["feedSources", feedId],
+      queryFn: () => listFeedSources(feedId)
+    });
+    const links = feedSourcesQuery.data ?? fetchedLinks ?? [];
+    const link = links.find((record) => record.source_id === sourceID);
+    const source = link?.source;
+    if (!source || source.storage_mode !== "local") {
+      return;
+    }
+
+    const preview = await previewSourceItems(source.id);
+    await cacheLocalSourceItems(feedId, source, preview.items);
+  }
+
+  async function refreshLocalSources() {
+    const fetchedLinks = await queryClient.fetchQuery({
+      queryKey: ["feedSources", feedId],
+      queryFn: () => listFeedSources(feedId)
+    });
+    const links = feedSourcesQuery.data ?? fetchedLinks ?? [];
+
+    for (const link of links) {
+      if (link.source?.storage_mode === "local") {
+        const preview = await previewSourceItems(link.source.id);
+        await cacheLocalSourceItems(feedId, link.source, preview.items);
+      }
+    }
+  }
+
   const refreshMutation = useMutation({
-    mutationFn: () => refreshFeed(feedId),
+    mutationFn: async () => {
+      const result = await refreshFeed(feedId);
+      await refreshLocalSources();
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems", feedId] });
       queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
       queryClient.invalidateQueries({ queryKey: ["saved"] });
     }
@@ -94,11 +148,25 @@ export function FeedPage() {
     }
   });
 
+  const refreshLocalSourceMutation = useMutation({
+    mutationFn: refreshLocalSource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedSources", feedId] });
+    }
+  });
+
   const removeSourceMutation = useMutation({
-    mutationFn: (sourceId: string) => removeFeedSource(feedId, sourceId),
+    mutationFn: async (source: { id: string; storageMode?: "server" | "local" }) => {
+      await removeFeedSource(feedId, source.id);
+      if (source.storageMode === "local") {
+        await removeLocalItemsBySource(source.id);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feedSources", feedId] });
       queryClient.invalidateQueries({ queryKey: ["feedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems", feedId] });
       queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
     }
   });
@@ -111,13 +179,56 @@ export function FeedPage() {
     }
   });
 
-  const items = itemsQuery.data?.items ?? [];
+  const toggleLocalSavedMutation = useMutation({
+    mutationFn: toggleLocalItemSaved,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems", feedId] });
+    }
+  });
+
+  const createLocalSourceMutation = useMutation({
+    mutationFn: async () => {
+      const trimmedURL = localSourceURL.trim();
+      const source = await createSource({
+        name: localSourceName.trim() || "Локальный RSS",
+        type: "rss",
+        url: trimmedURL,
+        feed_url: trimmedURL,
+        description: "Локальный RSS-источник",
+        language: "ru",
+        is_public: false,
+        storage_mode: "local"
+      });
+
+      const preview = await previewSourceItems(source.id);
+      await addFeedSource(feedId, source.id, 0);
+      await cacheLocalSourceItems(feedId, source, preview.items);
+      return source;
+    },
+    onSuccess: () => {
+      setLocalSourceName("");
+      setLocalSourceURL("");
+      queryClient.invalidateQueries({ queryKey: ["feedSources", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["localFeedItems", feedId] });
+      queryClient.invalidateQueries({ queryKey: ["feedCategories", feedId] });
+    }
+  });
+
+  const serverItems = itemsQuery.data?.items ?? [];
+  const localItems = useMemo(
+    () => filterLocalItems(localItemsQuery.data ?? [], dateFilter, selectedCategories),
+    [dateFilter, localItemsQuery.data, selectedCategories]
+  );
+  const items = useMemo(
+    () => [...serverItems, ...localItems].sort(byPublishedDesc),
+    [serverItems, localItems]
+  );
   const visibleItems = useMemo(
     () => filterItemsByQuery(items, searchQuery),
     [items, searchQuery]
   );
 
-  if (feedQuery.isLoading || itemsQuery.isLoading) {
+  if (feedQuery.isLoading || itemsQuery.isLoading || localItemsQuery.isLoading) {
     return <LoadingState label="Загружаем материалы" />;
   }
 
@@ -200,10 +311,17 @@ export function FeedPage() {
       {refreshSourceMutation.isError ? (
         <ErrorState title="Источник не обновлен" message={errorMessage(refreshSourceMutation.error)} />
       ) : null}
+      {refreshLocalSourceMutation.isError ? (
+        <ErrorState title="Локальный кэш не обновлен" message={errorMessage(refreshLocalSourceMutation.error)} />
+      ) : null}
+      {createLocalSourceMutation.isError ? (
+        <ErrorState title="Локальный источник не создан" message={errorMessage(createLocalSourceMutation.error)} />
+      ) : null}
       {removeSourceMutation.isError ? (
         <ErrorState title="Источник не отключен" message={errorMessage(removeSourceMutation.error)} />
       ) : null}
       {itemsQuery.isError ? <ErrorState message={errorMessage(itemsQuery.error)} /> : null}
+      {localItemsQuery.isError ? <ErrorState message={errorMessage(localItemsQuery.error)} /> : null}
 
       {sourcesOpen ? (
         <section className="feed-sources-panel" aria-label="Источники ленты">
@@ -223,6 +341,50 @@ export function FeedPage() {
             </button>
           </div>
 
+          <form
+            className="local-source-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (localSourceURL.trim()) {
+                createLocalSourceMutation.mutate();
+              }
+            }}
+          >
+            <label>
+              Название
+              <input
+                type="text"
+                value={localSourceName}
+                maxLength={160}
+                placeholder="Мой RSS"
+                onChange={(event) => setLocalSourceName(event.target.value)}
+              />
+            </label>
+            <label>
+              RSS URL
+              <input
+                type="url"
+                value={localSourceURL}
+                required
+                placeholder="https://example.com/feed.xml"
+                onChange={(event) => setLocalSourceURL(event.target.value)}
+              />
+            </label>
+            <button
+              className="primary-button local-source-submit"
+              type="submit"
+              title="Добавить локальный RSS"
+              aria-label="Добавить локальный RSS"
+              disabled={!localSourceURL.trim() || createLocalSourceMutation.isPending}
+            >
+              {createLocalSourceMutation.isPending ? (
+                <RefreshCw size={17} aria-hidden className="spin" />
+              ) : (
+                <Database size={17} aria-hidden />
+              )}
+            </button>
+          </form>
+
           {feedSourcesQuery.isLoading ? (
             <p className="feed-sources-status">Загружаем источники...</p>
           ) : null}
@@ -239,7 +401,8 @@ export function FeedPage() {
                 const source = link.source;
                 const sourceName = source?.name ?? "Источник";
                 const sourceURL = source?.feed_url ?? "";
-                const storageMode = source?.storage_mode === "local" ? "Локально" : "Сервер";
+                const isLocal = source?.storage_mode === "local";
+                const storageMode = isLocal ? "Локально" : "Сервер";
 
                 return (
                   <article className="feed-source-row" key={link.id}>
@@ -255,20 +418,28 @@ export function FeedPage() {
                       <button
                         className="icon-button"
                         type="button"
-                        title="Обновить источник"
-                        aria-label={`Обновить ${sourceName}`}
+                        title={isLocal ? "Обновить локальный кэш" : "Обновить источник"}
+                        aria-label={isLocal ? `Обновить локальный кэш ${sourceName}` : `Обновить ${sourceName}`}
                         disabled={
                           refreshSourceMutation.isPending ||
-                          source?.storage_mode === "local"
+                          refreshLocalSourceMutation.isPending
                         }
-                        onClick={() => refreshSourceMutation.mutate(link.source_id)}
+                        onClick={() => {
+                          if (isLocal) {
+                            refreshLocalSourceMutation.mutate(link.source_id);
+                          } else {
+                            refreshSourceMutation.mutate(link.source_id);
+                          }
+                        }}
                       >
                         <RefreshCw
                           size={17}
                           aria-hidden
                           className={
-                            refreshSourceMutation.isPending &&
-                            refreshSourceMutation.variables === link.source_id
+                            (refreshSourceMutation.isPending &&
+                              refreshSourceMutation.variables === link.source_id) ||
+                            (refreshLocalSourceMutation.isPending &&
+                              refreshLocalSourceMutation.variables === link.source_id)
                               ? "spin"
                               : ""
                           }
@@ -282,7 +453,10 @@ export function FeedPage() {
                         disabled={removeSourceMutation.isPending}
                         onClick={() => {
                           if (window.confirm(`Отключить источник "${sourceName}" от потока?`)) {
-                            removeSourceMutation.mutate(link.source_id);
+                            removeSourceMutation.mutate({
+                              id: link.source_id,
+                              storageMode: source?.storage_mode
+                            });
                           }
                         }}
                       >
@@ -330,14 +504,27 @@ export function FeedPage() {
               key={item.id}
               item={item}
               isSaving={
-                toggleSavedMutation.isPending &&
-                toggleSavedMutation.variables?.id === item.id
+                item.storage_mode === "local"
+                  ? toggleLocalSavedMutation.isPending &&
+                    toggleLocalSavedMutation.variables === item.id
+                  : toggleSavedMutation.isPending &&
+                    toggleSavedMutation.variables?.id === item.id
               }
-              onToggleSaved={(nextItem) => toggleSavedMutation.mutate(nextItem)}
+              onToggleSaved={(nextItem) => {
+                if (nextItem.storage_mode === "local") {
+                  toggleLocalSavedMutation.mutate(nextItem.id);
+                } else {
+                  toggleSavedMutation.mutate(nextItem);
+                }
+              }}
             />
           ))}
         </div>
       ) : null}
     </section>
   );
+}
+
+function byPublishedDesc(left: Item, right: Item) {
+  return new Date(right.published_at).getTime() - new Date(left.published_at).getTime();
 }
