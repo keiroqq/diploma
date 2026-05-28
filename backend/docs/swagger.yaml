@@ -394,6 +394,52 @@ definitions:
       query:
         type: string
     type: object
+  rss.PreviewItemResponse:
+    properties:
+      author:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      category_slugs:
+        items:
+          type: string
+        type: array
+      excerpt:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      published_at:
+        type: string
+      search_text:
+        type: string
+      source_id:
+        type: string
+      source_name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      url:
+        type: string
+    type: object
+  rss.PreviewItemsResponse:
+    properties:
+      feed_url:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/rss.PreviewItemResponse'
+        type: array
+      source_id:
+        type: string
+    type: object
   rss.RefreshResult:
     properties:
       errors:
@@ -1891,6 +1937,52 @@ paths:
       security:
       - BearerAuth: []
       summary: Обновить источник
+      tags:
+      - sources
+  /api/sources/{id}/preview-items:
+    get:
+      description: Безопасно скачивает RSS, нормализует карточки и возвращает их клиенту.
+        Используется для локального кэша custom RSS.
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rss.PreviewItemsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить материалы RSS-источника без сохранения на сервере
       tags:
       - sources
   /api/sources/{id}/refresh:

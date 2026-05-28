@@ -48,6 +48,21 @@ export type Source = {
   updated_at?: string;
 };
 
+export type CreateSourceRequest = {
+  name: string;
+  type: "rss";
+  url: string;
+  feed_url: string;
+  description: string;
+  language: string;
+  is_public: boolean;
+  storage_mode: "server" | "local";
+};
+
+export type UpdateSourceRequest = CreateSourceRequest & {
+  status: "active" | "pending" | "disabled" | "error";
+};
+
 export type FeedSource = {
   id: string;
   feed_id: string;
@@ -121,6 +136,22 @@ export type Item = {
   categories: string[];
   score: number;
   is_saved: boolean;
+  storage_mode?: "server" | "local";
+  feed_id?: string;
+  category_slugs?: string[];
+  search_text?: string;
+  cached_at?: string;
+};
+
+export type PreviewItem = Item & {
+  category_slugs: string[];
+  search_text: string;
+};
+
+export type PreviewItemsResponse = {
+  source_id: string;
+  feed_url: string;
+  items: PreviewItem[];
 };
 
 export type FeedItemsResponse = {

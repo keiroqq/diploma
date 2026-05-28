@@ -76,8 +76,13 @@ export function ArticleCard({
         return;
       }
 
+      const parsedClamp = Number.parseInt(
+        styles.getPropertyValue("-webkit-line-clamp"),
+        10
+      );
+      const maxTitleLines = Number.isFinite(parsedClamp) ? parsedClamp : 3;
       const nextLines = Math.min(
-        3,
+        maxTitleLines,
         Math.max(1, Math.round(title.getBoundingClientRect().height / lineHeight))
       );
       setTitleLines((current) => (current === nextLines ? current : nextLines));

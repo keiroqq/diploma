@@ -4,17 +4,21 @@ import type {
   Category,
   ConnectCatalogSourcesResponse,
   CreateFeedRequest,
+  CreateSourceRequest,
   Feed,
   FeedSource,
   FeedItemsResponse,
   Item,
   LoginRequest,
+  PreviewItemsResponse,
   RefreshResult,
   RegisterRequest,
   SavedItemsResponse,
   SearchItemsResponse,
+  Source,
   Topic,
   UpdateFeedRequest,
+  UpdateSourceRequest,
   User
 } from "./types";
 
@@ -168,6 +172,13 @@ export function removeFeedSource(feedId: string, sourceId: string) {
   });
 }
 
+export function addFeedSource(feedId: string, sourceId: string, priority = 0) {
+  return apiRequest<FeedSource>(`/api/feeds/${feedId}/sources`, {
+    method: "POST",
+    ...withJSON({ source_id: sourceId, priority })
+  });
+}
+
 export function connectCatalogSources(feedId: string, sourceIds: string[]) {
   return apiRequest<ConnectCatalogSourcesResponse>(
     `/api/feeds/${feedId}/catalog-sources`,
@@ -188,6 +199,28 @@ export function refreshSource(sourceId: string) {
   return apiRequest<RefreshResult>(`/api/sources/${sourceId}/refresh`, {
     method: "POST"
   });
+}
+
+export function createSource(payload: CreateSourceRequest) {
+  return apiRequest<Source>("/api/sources", {
+    method: "POST",
+    ...withJSON(payload)
+  });
+}
+
+export function listSources() {
+  return apiRequest<Source[]>("/api/sources");
+}
+
+export function updateSource(sourceId: string, payload: UpdateSourceRequest) {
+  return apiRequest<Source>(`/api/sources/${sourceId}`, {
+    method: "PUT",
+    ...withJSON(payload)
+  });
+}
+
+export function previewSourceItems(sourceId: string) {
+  return apiRequest<PreviewItemsResponse>(`/api/sources/${sourceId}/preview-items`);
 }
 
 export function listCatalogTopics() {

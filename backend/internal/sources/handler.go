@@ -17,13 +17,22 @@ type SourceRefresher interface {
 	RefreshSource(ctx context.Context, sourceID uuid.UUID, userID uuid.UUID) (any, error)
 }
 
+type SourceItemPreviewer interface {
+	PreviewSourceItems(ctx context.Context, sourceID uuid.UUID, userID uuid.UUID) (any, error)
+}
+
 type Handler struct {
 	service   *Service
 	refresher SourceRefresher
+	previewer SourceItemPreviewer
 }
 
 func NewHandler(service *Service, refresher SourceRefresher) *Handler {
-	return &Handler{service: service, refresher: refresher}
+	handler := &Handler{service: service, refresher: refresher}
+	if previewer, ok := refresher.(SourceItemPreviewer); ok {
+		handler.previewer = previewer
+	}
+	return handler
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -33,6 +42,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Put("/sources/{id}", h.Update)
 	r.Delete("/sources/{id}", h.Delete)
 	r.Post("/sources/{id}/refresh", h.Refresh)
+	r.Get("/sources/{id}/preview-items", h.PreviewItems)
 }
 
 // List godoc
@@ -212,6 +222,41 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.refresher.RefreshSource(r.Context(), sourceID, userID)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, resp)
+}
+
+// PreviewItems godoc
+// @Summary Получить материалы RSS-источника без сохранения на сервере
+// @Description Безопасно скачивает RSS, нормализует карточки и возвращает их клиенту. Используется для локального кэша custom RSS.
+// @Tags sources
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Source ID"
+// @Success 200 {object} rss.PreviewItemsResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/sources/{id}/preview-items [get]
+func (h *Handler) PreviewItems(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	sourceID, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+	if h.previewer == nil {
+		httpx.RespondError(w, http.StatusNotImplemented, "source preview is not configured")
+		return
+	}
+
+	resp, err := h.previewer.PreviewSourceItems(r.Context(), sourceID, userID)
 	if err != nil {
 		h.handleError(w, err)
 		return

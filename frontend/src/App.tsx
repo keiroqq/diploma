@@ -8,6 +8,7 @@ import { CatalogPage } from "./pages/CatalogPage";
 import { FeedPage } from "./pages/FeedPage";
 import { FeedsPage } from "./pages/FeedsPage";
 import { SavedPage } from "./pages/SavedPage";
+import { SourcesPage } from "./pages/SourcesPage";
 import { useAuthStore } from "./store/auth";
 
 function GuestRoute({ children }: { children: JSX.Element }) {
@@ -46,6 +47,7 @@ export function App() {
           <Route path="/feeds/:feedId" element={<FeedPage />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/saved" element={<SavedPage />} />
+          <Route path="/sources" element={<SourcesPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/feeds" replace />} />
