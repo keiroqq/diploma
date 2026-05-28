@@ -3,6 +3,7 @@ package rss
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -96,16 +97,16 @@ func (s *Service) PreviewSourceItems(ctx context.Context, sourceID uuid.UUID, us
 		return nil, err
 	}
 	if source.Type != models.SourceTypeRSS {
-		return nil, httpx.ErrInvalidInput
+		return nil, httpx.ErrNotImplemented
 	}
 	if source.Status == models.SourceStatusDisabled {
-		return nil, httpx.ErrInvalidInput
+		return nil, httpx.ErrSourceDisabled
 	}
 
 	feed, err := s.parser.ParseURL(ctx, source.FeedURL)
 	if err != nil {
 		s.markSourceStatus(ctx, source.ID, models.SourceStatusError, nil)
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", httpx.ErrFeedFetchFailed, err)
 	}
 
 	items := make([]PreviewItemResponse, 0, len(feed.Items))

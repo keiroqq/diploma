@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/middleware"
 )
@@ -240,6 +241,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Failure 404 {object} map[string]string
+// @Failure 422 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/sources/{id}/preview-items [get]
 func (h *Handler) PreviewItems(w http.ResponseWriter, r *http.Request) {
@@ -269,8 +271,16 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.As(err, &validationErrors):
 		httpx.RespondJSON(w, http.StatusBadRequest, httpx.ErrorResponse{Error: "validation failed", Details: validationErrors.Error()})
+	case errors.Is(err, fetch.ErrUnsafeURL):
+		httpx.RespondError(w, http.StatusBadRequest, "unsafe source url")
 	case errors.Is(err, httpx.ErrInvalidInput):
 		httpx.RespondError(w, http.StatusBadRequest, "invalid source url")
+	case errors.Is(err, httpx.ErrNotImplemented):
+		httpx.RespondError(w, http.StatusBadRequest, "only rss sources are supported")
+	case errors.Is(err, httpx.ErrSourceDisabled):
+		httpx.RespondError(w, http.StatusUnprocessableEntity, "source is disabled")
+	case errors.Is(err, httpx.ErrFeedFetchFailed):
+		httpx.RespondError(w, http.StatusUnprocessableEntity, "rss feed could not be fetched")
 	case errors.Is(err, httpx.ErrNotFound):
 		httpx.RespondError(w, http.StatusNotFound, "source not found")
 	case errors.Is(err, httpx.ErrForbidden):
