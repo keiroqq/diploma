@@ -11,6 +11,7 @@ import (
 	"github.com/gosimple/slug"
 	"gorm.io/gorm"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/models"
 )
@@ -47,7 +48,7 @@ func NewService(db *gorm.DB, refreshCooldown time.Duration, logger *slog.Logger)
 	cleaner := NewCleaner()
 	return &Service{
 		db:              db,
-		parser:          NewParser(),
+		parser:          NewParser(fetch.NewSafeHTTPClient(fetch.DefaultTimeout, fetch.DefaultMaxResponseBytes)),
 		normalizer:      NewNormalizer(cleaner),
 		refreshCooldown: refreshCooldown,
 		logger:          logger,
@@ -117,6 +118,11 @@ func (s *Service) refreshSourceRecord(ctx context.Context, source *models.Source
 	if source.Type != models.SourceTypeRSS {
 		result.Skipped = true
 		result.Reason = "only rss sources are supported in MVP"
+		return result, nil
+	}
+	if source.StorageMode == models.SourceStorageLocal {
+		result.Skipped = true
+		result.Reason = "local storage source"
 		return result, nil
 	}
 	if source.Status == models.SourceStatusDisabled {

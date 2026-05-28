@@ -27,10 +27,10 @@ func (r *Repository) FeedExistsForUser(ctx context.Context, feedID uuid.UUID, us
 	return count > 0, err
 }
 
-func (r *Repository) FindUserSourceByCatalogPage(ctx context.Context, userID uuid.UUID, pageURL string) (*models.Source, error) {
+func (r *Repository) FindPublicSourceByCatalogPage(ctx context.Context, pageURL string) (*models.Source, error) {
 	var source models.Source
 	result := r.db.WithContext(ctx).
-		Where("created_by = ? AND url = ?", userID, pageURL).
+		Where("is_public = true AND url = ?", pageURL).
 		Limit(1).
 		Find(&source)
 	if result.Error != nil {

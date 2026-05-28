@@ -146,6 +146,23 @@ func (s *Service) AddSource(ctx context.Context, feedID uuid.UUID, userID uuid.U
 	return &resp, nil
 }
 
+func (s *Service) ListSources(ctx context.Context, feedID uuid.UUID, userID uuid.UUID) ([]FeedSourceResponse, error) {
+	if _, err := s.repo.GetByIDForUser(ctx, feedID, userID); err != nil {
+		return nil, mapGormNotFound(err)
+	}
+
+	links, err := s.repo.ListEnabledSources(ctx, feedID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]FeedSourceResponse, 0, len(links))
+	for _, link := range links {
+		resp = append(resp, feedSourceResponse(link))
+	}
+	return resp, nil
+}
+
 func (s *Service) RemoveSource(ctx context.Context, feedID uuid.UUID, userID uuid.UUID, sourceID uuid.UUID) error {
 	if _, err := s.repo.GetByIDForUser(ctx, feedID, userID); err != nil {
 		return mapGormNotFound(err)
@@ -165,6 +182,33 @@ func feedResponse(feed models.Feed) FeedResponse {
 		CreatedAt:   feed.CreatedAt,
 		UpdatedAt:   feed.UpdatedAt,
 	}
+}
+
+func feedSourceResponse(link models.FeedSource) FeedSourceResponse {
+	resp := FeedSourceResponse{
+		ID:        link.ID,
+		FeedID:    link.FeedID,
+		SourceID:  link.SourceID,
+		IsEnabled: link.IsEnabled,
+		Priority:  link.Priority,
+		CreatedAt: link.CreatedAt,
+	}
+	if link.Source.ID != uuid.Nil {
+		resp.Source = &FeedSourceDetails{
+			ID:            link.Source.ID,
+			Name:          link.Source.Name,
+			Type:          link.Source.Type,
+			URL:           link.Source.URL,
+			FeedURL:       link.Source.FeedURL,
+			Description:   link.Source.Description,
+			Language:      link.Source.Language,
+			IsPublic:      link.Source.IsPublic,
+			StorageMode:   link.Source.StorageMode,
+			Status:        link.Source.Status,
+			LastFetchedAt: link.Source.LastFetchedAt,
+		}
+	}
+	return resp
 }
 
 func defaultString(value string, fallback string) string {

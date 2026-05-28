@@ -746,6 +746,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/feeds/{id}/categories": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает только категории, которые соответствуют подключенным источникам выбранной ленты.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "Получить категории ленты",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Feed ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/categories.CategoryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/feeds/{id}/items": {
             "get": {
                 "security": [
@@ -753,7 +826,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "mode=today возвращает сегодняшние материалы, mode=archive возвращает архивные материалы с cursor-пагинацией.",
+                "description": "mode=today возвращает сегодняшние материалы, mode=archive возвращает архивные материалы с cursor-пагинацией, mode=all возвращает материалы без ограничения по дате.",
                 "produces": [
                     "application/json"
                 ],
@@ -771,7 +844,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "today или archive",
+                        "description": "today, archive или all",
                         "name": "mode",
                         "in": "query"
                     },
@@ -791,6 +864,24 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Slug категории, например ai или backend",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Slugs категорий через запятую, например ai,backend",
+                        "name": "categories",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата начала в формате YYYY-MM-DD или RFC3339",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата конца в формате YYYY-MM-DD или RFC3339",
+                        "name": "date_to",
                         "in": "query"
                     }
                 ],
@@ -1217,6 +1308,76 @@ const docTemplate = `{
             }
         },
         "/api/feeds/{id}/sources": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Получить источники ленты",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Feed ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/feeds.FeedSourceResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1327,6 +1488,88 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": ""
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/items/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ищет по материалам из доступных пользователю потоков. Если передан feed_id, область поиска сужается до этого потока.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "items"
+                ],
+                "summary": "Поиск материалов",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Поисковый запрос",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Feed ID для поиска внутри одного потока",
+                        "name": "feed_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит, максимум 200",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/items.SearchItemsResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
@@ -2234,6 +2477,44 @@ const docTemplate = `{
                 }
             }
         },
+        "feeds.FeedSourceDetails": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "feed_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_public": {
+                    "type": "boolean"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "last_fetched_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "storage_mode": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "feeds.FeedSourceResponse": {
             "type": "object",
             "properties": {
@@ -2251,6 +2532,9 @@ const docTemplate = `{
                 },
                 "priority": {
                     "type": "integer"
+                },
+                "source": {
+                    "$ref": "#/definitions/feeds.FeedSourceDetails"
                 },
                 "source_id": {
                     "type": "string"
@@ -2475,6 +2759,20 @@ const docTemplate = `{
                 }
             }
         },
+        "items.SearchItemsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/items.ItemResponse"
+                    }
+                },
+                "query": {
+                    "type": "string"
+                }
+            }
+        },
         "rss.RefreshResult": {
             "type": "object",
             "properties": {
@@ -2559,6 +2857,13 @@ const docTemplate = `{
                     "maxLength": 160,
                     "minLength": 2
                 },
+                "storage_mode": {
+                    "type": "string",
+                    "enum": [
+                        "server",
+                        "local"
+                    ]
+                },
                 "type": {
                     "type": "string",
                     "enum": [
@@ -2601,6 +2906,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "storage_mode": {
                     "type": "string"
                 },
                 "type": {
@@ -2647,6 +2955,13 @@ const docTemplate = `{
                         "pending",
                         "disabled",
                         "error"
+                    ]
+                },
+                "storage_mode": {
+                    "type": "string",
+                    "enum": [
+                        "server",
+                        "local"
                     ]
                 },
                 "type": {

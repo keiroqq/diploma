@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Rss } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Check, Loader2, Palette, Plus, Rss } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   connectCatalogSources,
@@ -16,9 +16,12 @@ import { errorMessage } from "../utils/errors";
 
 export function CatalogPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [feedName, setFeedName] = useState("Моя IT-лента");
+  const [themeColor, setThemeColor] = useState("#2563eb");
+  const targetFeedId = searchParams.get("feed_id");
 
   const topicsQuery = useQuery({
     queryKey: ["catalogTopics"],
@@ -38,11 +41,17 @@ export function CatalogPage() {
     mutationFn: async () => {
       const sourceIds = selectedSources.map((source) => source.id);
       const sourceTitles = selectedSources.map((source) => source.title).join(", ");
+      if (targetFeedId) {
+        await connectCatalogSources(targetFeedId, sourceIds);
+        await refreshFeed(targetFeedId).catch(() => undefined);
+        return { id: targetFeedId };
+      }
+
       const feed = await createFeed({
         name: feedName.trim() || "Новая лента",
         description: sourceTitles ? `Источники: ${sourceTitles}` : "Лента из каталога",
         icon: "rss",
-        theme_color: "#2563eb",
+        theme_color: themeColor,
         layout_type: "cards"
       });
 
@@ -59,6 +68,8 @@ export function CatalogPage() {
     },
     onSuccess: async (feed) => {
       await queryClient.invalidateQueries({ queryKey: ["feeds"] });
+      await queryClient.invalidateQueries({ queryKey: ["feedCategories", feed.id] });
+      await queryClient.invalidateQueries({ queryKey: ["feedSources", feed.id] });
       navigate(`/feeds/${feed.id}`);
     }
   });
@@ -92,25 +103,64 @@ export function CatalogPage() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">Каталог</p>
-          <h1>Темы и источники</h1>
+          <h1>{targetFeedId ? "Добавить источники" : "Темы и источники"}</h1>
         </div>
       </div>
 
-      <div className="catalog-builder">
-        <label>
-          Название потока
-          <input
-            type="text"
-            value={feedName}
-            onChange={(event) => setFeedName(event.target.value)}
-            maxLength={120}
-          />
-        </label>
-        <div className="builder-summary">
-          <span>{selected.size} выбрано</span>
+      <div className={`catalog-builder ${targetFeedId ? "existing-feed" : ""}`}>
+        {!targetFeedId ? (
+          <label>
+            Название потока
+            <input
+              type="text"
+              value={feedName}
+              onChange={(event) => setFeedName(event.target.value)}
+              maxLength={120}
+            />
+          </label>
+        ) : null}
+        <div className="builder-actions">
+          {!targetFeedId ? (
+            <label
+              className="catalog-color-button"
+              title="Выбрать цвет"
+              aria-label="Выбрать цвет потока"
+            >
+              <input
+                type="color"
+                aria-label="Выбрать цвет потока"
+                value={themeColor}
+                onChange={(event) => setThemeColor(event.target.value)}
+              />
+              <span
+                className="catalog-color-swatch"
+                style={{ backgroundColor: themeColor }}
+                aria-hidden
+              />
+              <Palette size={17} aria-hidden />
+            </label>
+          ) : null}
           <button
-            className="primary-button"
+            className="primary-button catalog-create-button"
             type="button"
+            title={
+              createFromCatalogMutation.isPending
+                ? targetFeedId
+                  ? "Добавляем источники"
+                  : "Создаем поток"
+                : targetFeedId
+                  ? "Добавить источники"
+                  : "Создать поток"
+            }
+            aria-label={
+              createFromCatalogMutation.isPending
+                ? targetFeedId
+                  ? "Добавляем источники"
+                  : "Создаем поток"
+                : targetFeedId
+                  ? "Добавить источники"
+                  : "Создать поток"
+            }
             disabled={!selected.size || createFromCatalogMutation.isPending}
             onClick={() => createFromCatalogMutation.mutate()}
           >
@@ -119,14 +169,14 @@ export function CatalogPage() {
             ) : (
               <Plus size={18} aria-hidden />
             )}
-            {createFromCatalogMutation.isPending ? "Создаем поток" : "Создать поток"}
           </button>
         </div>
+        <span className="builder-selected-count">{selected.size} выбрано</span>
       </div>
 
       {createFromCatalogMutation.isError ? (
         <ErrorState
-          title="Поток не создан"
+          title={targetFeedId ? "Источники не добавлены" : "Поток не создан"}
           message={errorMessage(createFromCatalogMutation.error)}
         />
       ) : null}

@@ -42,10 +42,25 @@ type FeedResponse struct {
 }
 
 type FeedSourceResponse struct {
-	ID        uuid.UUID `json:"id"`
-	FeedID    uuid.UUID `json:"feed_id"`
-	SourceID  uuid.UUID `json:"source_id"`
-	IsEnabled bool      `json:"is_enabled"`
-	Priority  int       `json:"priority"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	FeedID    uuid.UUID          `json:"feed_id"`
+	SourceID  uuid.UUID          `json:"source_id"`
+	IsEnabled bool               `json:"is_enabled"`
+	Priority  int                `json:"priority"`
+	CreatedAt time.Time          `json:"created_at"`
+	Source    *FeedSourceDetails `json:"source,omitempty"`
+}
+
+type FeedSourceDetails struct {
+	ID            uuid.UUID  `json:"id"`
+	Name          string     `json:"name"`
+	Type          string     `json:"type"`
+	URL           string     `json:"url"`
+	FeedURL       string     `json:"feed_url"`
+	Description   string     `json:"description"`
+	Language      string     `json:"language"`
+	IsPublic      bool       `json:"is_public"`
+	StorageMode   string     `json:"storage_mode"`
+	Status        string     `json:"status"`
+	LastFetchedAt *time.Time `json:"last_fetched_at"`
 }

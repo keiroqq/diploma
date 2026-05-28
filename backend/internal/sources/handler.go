@@ -224,6 +224,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.As(err, &validationErrors):
 		httpx.RespondJSON(w, http.StatusBadRequest, httpx.ErrorResponse{Error: "validation failed", Details: validationErrors.Error()})
+	case errors.Is(err, httpx.ErrInvalidInput):
+		httpx.RespondError(w, http.StatusBadRequest, "invalid source url")
 	case errors.Is(err, httpx.ErrNotFound):
 		httpx.RespondError(w, http.StatusNotFound, "source not found")
 	case errors.Is(err, httpx.ErrForbidden):

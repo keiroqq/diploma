@@ -7,7 +7,7 @@ import {
   type PointerEvent,
   type WheelEvent
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark,
   CalendarDays,
@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Compass,
   Filter,
+  Globe2,
   LogOut,
   Menu,
   Rss,
@@ -32,9 +33,20 @@ import {
   useSearchParams
 } from "react-router-dom";
 
-import { getMe, listCategories, listFeeds } from "../api/client";
+import {
+  getMe,
+  listCategories,
+  listFeedCategories,
+  listFeeds,
+  saveItem,
+  searchItems,
+  unsaveItem
+} from "../api/client";
+import type { Item } from "../api/types";
+import { ArticleCard } from "./ArticleCard";
 import { useAuthStore } from "../store/auth";
 import { useUiStore } from "../store/ui";
+import { errorMessage } from "../utils/errors";
 import {
   categoryFilterLabel,
   getDateFilter,
@@ -42,6 +54,12 @@ import {
   localDateString,
   type DatePreset
 } from "../utils/filters";
+
+function feedPillStyle(themeColor?: string): CSSProperties {
+  return {
+    "--feed-pill-color": themeColor || "#2563eb"
+  } as CSSProperties;
+}
 
 export function AppShell() {
   const location = useLocation();
@@ -55,16 +73,18 @@ export function AppShell() {
   const drawerOpen = useUiStore((state) => state.drawerOpen);
   const searchOpen = useUiStore((state) => state.searchOpen);
   const searchQuery = useUiStore((state) => state.searchQuery);
+  const searchScope = useUiStore((state) => state.searchScope);
   const setDrawerOpen = useUiStore((state) => state.setDrawerOpen);
   const setSearchOpen = useUiStore((state) => state.setSearchOpen);
   const setSearchQuery = useUiStore((state) => state.setSearchQuery);
+  const setSearchScope = useUiStore((state) => state.setSearchScope);
   const closeSearch = useUiStore((state) => state.closeSearch);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dateFromInputRef = useRef<HTMLInputElement>(null);
   const dateToInputRef = useRef<HTMLInputElement>(null);
   const feedStripRef = useRef<HTMLDivElement>(null);
   const feedScrollTrackRef = useRef<HTMLDivElement>(null);
-  const feedPillRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const feedPillRefs = useRef<Record<string, HTMLElement | null>>({});
   const feedScrollHoldRef = useRef<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
@@ -94,12 +114,6 @@ export function AppShell() {
     staleTime: 5 * 60_000
   });
 
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: listCategories,
-    enabled: Boolean(token)
-  });
-
   useEffect(() => {
     if (meQuery.data) {
       setUser(meQuery.data);
@@ -108,13 +122,39 @@ export function AppShell() {
 
   const feedId = location.pathname.match(/^\/feeds\/([^/]+)/)?.[1];
   const isFeedRoute = Boolean(feedId);
+  const hasFeedTools = isFeedRoute || searchOpen;
   const currentFeed = feedsQuery.data?.find((feed) => feed.id === feedId);
+  const searchScopeFeed = searchScope.type === "feed"
+    ? feedsQuery.data?.find((feed) => feed.id === searchScope.feedId)
+    : undefined;
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    enabled: Boolean(token) && !isFeedRoute
+  });
+
+  const feedCategoriesQuery = useQuery({
+    queryKey: ["feedCategories", feedId],
+    queryFn: () => listFeedCategories(feedId ?? ""),
+    enabled: Boolean(token) && isFeedRoute
+  });
+
   const dateFilter = getDateFilter(searchParams);
   const selectedCategories = getSelectedCategorySlugs(searchParams);
-  const categories = categoriesQuery.data ?? [];
+  const categories = isFeedRoute
+    ? feedCategoriesQuery.data ?? []
+    : categoriesQuery.data ?? [];
+  const categoriesLoading = isFeedRoute
+    ? feedCategoriesQuery.isLoading
+    : categoriesQuery.isLoading;
   const categoryLabel = categoryFilterLabel(categories, selectedCategories);
-  const headerOffset = isFeedRoute ? "132px" : "64px";
+  const headerOffset = hasFeedTools ? "132px" : "64px";
   const popoverOpen = dateMenuOpen || categoryMenuOpen;
+  const normalizedSearchQuery = searchQuery.trim();
+  const searchPlaceholder = searchScope.type === "feed"
+    ? `Поиск в потоке "${searchScopeFeed?.name ?? currentFeed?.name ?? "Поток"}"`
+    : "Поиск по всем доступным статьям";
 
   const pageTitle = useMemo(() => {
     if (location.pathname === "/catalog") {
@@ -131,6 +171,38 @@ export function AppShell() {
 
   const searchAvailable =
     location.pathname.startsWith("/feeds/") || location.pathname === "/saved";
+  const activeFeedPillId =
+    searchOpen && searchScope.type === "feed" ? searchScope.feedId : feedId;
+
+  const searchItemsQuery = useQuery({
+    queryKey: [
+      "searchItems",
+      searchScope.type,
+      searchScope.type === "feed" ? searchScope.feedId : null,
+      normalizedSearchQuery
+    ],
+    queryFn: () =>
+      searchItems(normalizedSearchQuery, {
+        feedId: searchScope.type === "feed" ? searchScope.feedId : undefined,
+        limit: 200
+      }),
+    enabled:
+      Boolean(token) &&
+      searchOpen &&
+      normalizedSearchQuery.length > 0 &&
+      (searchScope.type === "feed" ? Boolean(searchScope.feedId) : true)
+  });
+
+  const searchResults = searchItemsQuery.data?.items ?? [];
+
+  const toggleSearchSavedMutation = useMutation({
+    mutationFn: (item: Item) => (item.is_saved ? unsaveItem(item.id) : saveItem(item.id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feedItems"] });
+      queryClient.invalidateQueries({ queryKey: ["saved"] });
+      queryClient.invalidateQueries({ queryKey: ["searchItems"] });
+    }
+  });
 
   useEffect(() => {
     if (!searchAvailable && searchOpen) {
@@ -154,6 +226,35 @@ export function AppShell() {
   }, [selectedCategories.join(",")]);
 
   useEffect(() => {
+    if (!isFeedRoute || !feedCategoriesQuery.isSuccess || !selectedCategories.length) {
+      return;
+    }
+
+    const availableSlugs = new Set(categories.map((category) => category.slug));
+    const nextSelected = selectedCategories.filter((slug) => availableSlugs.has(slug));
+    if (nextSelected.length === selectedCategories.length) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("category");
+    nextParams.delete("categories");
+    if (nextSelected.length) {
+      nextParams.set("categories", nextSelected.join(","));
+    }
+
+    setDraftCategories(nextSelected);
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    categories,
+    feedCategoriesQuery.isSuccess,
+    isFeedRoute,
+    searchParams,
+    selectedCategories.join(","),
+    setSearchParams
+  ]);
+
+  useEffect(() => {
     if (!isFeedRoute) {
       setFiltersOpen(false);
       setDateMenuOpen(false);
@@ -162,18 +263,23 @@ export function AppShell() {
   }, [isFeedRoute]);
 
   useEffect(() => {
-    if (feedId) {
-      feedPillRefs.current[feedId]?.scrollIntoView({
+    if (!hasFeedTools) {
+      return;
+    }
+
+    if (activeFeedPillId) {
+      feedPillRefs.current[activeFeedPillId]?.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
         inline: "center"
       });
-      window.requestAnimationFrame(updateFeedStripScrollState);
     }
-  }, [feedId, feedsQuery.data?.length]);
+
+    window.requestAnimationFrame(updateFeedStripScrollState);
+  }, [activeFeedPillId, feedsQuery.data?.length, hasFeedTools]);
 
   useEffect(() => {
-    if (!isFeedRoute) {
+    if (!hasFeedTools) {
       return;
     }
 
@@ -194,7 +300,7 @@ export function AppShell() {
       resizeObserver.disconnect();
       stopFeedStripHold();
     };
-  }, [isFeedRoute, feedsQuery.data?.length]);
+  }, [feedsQuery.data?.length, hasFeedTools]);
 
   function handleLogout() {
     queryClient.clear();
@@ -210,6 +316,20 @@ export function AppShell() {
     setFiltersOpen(false);
     closeFilterPopovers();
     setDrawerOpen(true);
+  }
+
+  function openSearch() {
+    closeFilterPopovers();
+    setFiltersOpen(false);
+    setDrawerOpen(false);
+
+    if (feedId) {
+      setSearchScope({ type: "feed", feedId });
+    } else {
+      setSearchScope({ type: "all" });
+    }
+
+    setSearchOpen(true);
   }
 
   function updateFilterParams(mutator: (next: URLSearchParams) => void) {
@@ -430,12 +550,96 @@ export function AppShell() {
     setFiltersOpen(false);
   }
 
+  function renderSearchSurface() {
+    const searchLoading =
+      normalizedSearchQuery.length > 0 &&
+      searchItemsQuery.isLoading;
+    const searchError = searchItemsQuery.error;
+
+    if (!normalizedSearchQuery) {
+      return (
+        <div className="search-mode-surface">
+          <div className="search-hint">
+            <span className="search-hint-icon">
+              <Search size={64} aria-hidden />
+            </span>
+            <p>
+              Сузьте область поиска в пределах потока, нажав на его название, или
+              нажмите{" "}
+              <span className="search-inline-icon" aria-label="иконку планеты" role="img">
+                <Globe2 size={15} aria-hidden />
+              </span>
+              , чтобы искать среди всех доступных статей.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (searchLoading) {
+      return (
+        <div className="search-mode-surface">
+          <div className="search-hint search-hint-muted">
+            <span className="search-hint-icon">
+              <Search size={48} aria-hidden />
+            </span>
+            <p>Ищем материалы...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (searchError) {
+      return (
+        <div className="search-mode-surface">
+          <div className="search-hint search-hint-muted">
+            <span className="search-hint-icon">
+              <Search size={48} aria-hidden />
+            </span>
+            <p>{errorMessage(searchError)}</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!searchResults.length) {
+      return (
+        <div className="search-mode-surface">
+          <div className="search-hint search-hint-muted">
+            <span className="search-hint-icon">
+              <Search size={48} aria-hidden />
+            </span>
+            <p>Ничего не найдено. Попробуйте другой запрос или выберите другую область поиска.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="search-mode-surface">
+        <div className="search-results" aria-live="polite">
+          {searchResults.map((item) => (
+            <ArticleCard
+              key={item.id}
+              item={item}
+              isSaving={
+                toggleSearchSavedMutation.isPending &&
+                toggleSearchSavedMutation.variables?.id === item.id
+              }
+              onToggleSaved={(nextItem) => toggleSearchSavedMutation.mutate(nextItem)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const shellStyle = {
     "--topbar-offset": headerOffset
   } as CSSProperties;
 
   return (
-    <div className="app-shell" style={shellStyle}>
+    <div className={`app-shell ${searchOpen ? "search-open" : ""}`} style={shellStyle}>
       {popoverOpen ? (
         <button
           className="filter-popover-backdrop"
@@ -452,25 +656,27 @@ export function AppShell() {
         />
       ) : null}
       <header
-        className={`topbar ${isFeedRoute ? "with-feed-tools" : ""}`}
+        className={`topbar ${hasFeedTools ? "with-feed-tools" : ""} ${searchOpen ? "search-mode" : ""}`}
         onClickCapture={closeFiltersFromHeaderClick}
       >
         <div className="topbar-main">
-          <button
-            className="icon-button"
-            type="button"
-            title="Открыть меню"
-            aria-label="Открыть меню"
-            onClick={() => {
-              if (drawerOpen) {
-                setDrawerOpen(false);
-              } else {
-                openDrawer();
-              }
-            }}
-          >
-            <Menu size={22} aria-hidden />
-          </button>
+          {!searchOpen ? (
+            <button
+              className="icon-button"
+              type="button"
+              title="Открыть меню"
+              aria-label="Открыть меню"
+              onClick={() => {
+                if (drawerOpen) {
+                  setDrawerOpen(false);
+                } else {
+                  openDrawer();
+                }
+              }}
+            >
+              <Menu size={22} aria-hidden />
+            </button>
+          ) : null}
 
           <div className="topbar-title">
             {searchOpen && searchAvailable ? (
@@ -481,7 +687,7 @@ export function AppShell() {
                   type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Поиск по текущей выдаче"
+                  placeholder={searchPlaceholder}
                 />
               </label>
             ) : (
@@ -499,7 +705,7 @@ export function AppShell() {
               if (searchOpen) {
                 closeSearch();
               } else {
-                setSearchOpen(true);
+                openSearch();
               }
             }}
           >
@@ -507,7 +713,7 @@ export function AppShell() {
           </button>
         </div>
 
-        {isFeedRoute ? (
+        {hasFeedTools ? (
           <div className="feed-toolbar">
             <div
               className={`feed-scroll-track ${feedStripScroll.canScroll ? "active" : ""} ${feedStripDragging ? "dragging" : ""}`}
@@ -531,14 +737,22 @@ export function AppShell() {
             </div>
             <div className="feed-toolbar-row">
               <button
-                className={`icon-button filter-toggle ${filtersOpen ? "active" : ""}`}
+                className={`icon-button filter-toggle ${filtersOpen || (searchOpen && searchScope.type === "all") ? "active" : ""}`}
                 type="button"
-                title="Фильтры"
-                aria-label="Фильтры"
-                aria-expanded={filtersOpen}
-                onClick={() => setFiltersOpen((open) => !open)}
+                title={searchOpen ? "Все доступные статьи" : "Фильтры"}
+                aria-label={searchOpen ? "Искать среди всех доступных статей" : "Фильтры"}
+                aria-expanded={searchOpen ? undefined : filtersOpen}
+                aria-pressed={searchOpen ? searchScope.type === "all" : undefined}
+                onClick={() => {
+                  if (searchOpen) {
+                    setSearchScope({ type: "all" });
+                    return;
+                  }
+
+                  setFiltersOpen((open) => !open);
+                }}
               >
-                <Filter size={19} aria-hidden />
+                {searchOpen ? <Globe2 size={19} aria-hidden /> : <Filter size={19} aria-hidden />}
               </button>
               <div
                 className={`feed-strip-frame ${feedStripScroll.canScrollLeft ? "can-scroll-left" : ""} ${feedStripScroll.canScrollRight ? "can-scroll-right" : ""}`}
@@ -567,20 +781,36 @@ export function AppShell() {
                   aria-label="Быстрое переключение потоков"
                   onWheel={handleFeedStripWheel}
                 >
-                  {(feedsQuery.data ?? []).map((feed) => (
-                    <NavLink
-                      className={({ isActive }) =>
-                        `feed-pill ${isActive ? "active" : ""}`
-                      }
-                      key={feed.id}
-                      ref={(node) => {
-                        feedPillRefs.current[feed.id] = node;
-                      }}
-                      to={`/feeds/${feed.id}${location.search}`}
-                    >
-                      <span className="feed-pill-label">{feed.name}</span>
-                    </NavLink>
-                  ))}
+                  {(feedsQuery.data ?? []).map((feed) =>
+                    searchOpen ? (
+                      <button
+                        className={`feed-pill ${searchScope.type === "feed" && searchScope.feedId === feed.id ? "active" : ""}`}
+                        key={feed.id}
+                        ref={(node) => {
+                          feedPillRefs.current[feed.id] = node;
+                        }}
+                        type="button"
+                        style={feedPillStyle(feed.theme_color)}
+                        onClick={() => setSearchScope({ type: "feed", feedId: feed.id })}
+                      >
+                        <span className="feed-pill-label">{feed.name}</span>
+                      </button>
+                    ) : (
+                      <NavLink
+                        className={({ isActive }) =>
+                          `feed-pill ${isActive ? "active" : ""}`
+                        }
+                        key={feed.id}
+                        ref={(node) => {
+                          feedPillRefs.current[feed.id] = node;
+                        }}
+                        to={`/feeds/${feed.id}${location.search}`}
+                        style={feedPillStyle(feed.theme_color)}
+                      >
+                        <span className="feed-pill-label">{feed.name}</span>
+                      </NavLink>
+                    )
+                  )}
                 </div>
 
                 <button
@@ -710,21 +940,29 @@ export function AppShell() {
                     {categoryMenuOpen ? (
                       <div className="filter-popover category-popover" role="menu">
                         <div className="category-options">
-                          {categories.map((category) => (
-                            <label className="checkbox-row" key={category.id}>
-                              <input
-                                type="checkbox"
-                                checked={draftCategories.includes(category.slug)}
-                                onChange={() => toggleDraftCategory(category.slug)}
-                              />
-                              <span className="custom-checkbox">
-                                {draftCategories.includes(category.slug) ? (
-                                  <Check size={14} aria-hidden />
-                                ) : null}
-                              </span>
-                              {category.name}
-                            </label>
-                          ))}
+                          {categoriesLoading ? (
+                            <p className="category-empty">Загружаем темы...</p>
+                          ) : null}
+                          {!categoriesLoading && !categories.length ? (
+                            <p className="category-empty">В этом потоке пока нет тем.</p>
+                          ) : null}
+                          {!categoriesLoading
+                            ? categories.map((category) => (
+                              <label className="checkbox-row" key={category.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={draftCategories.includes(category.slug)}
+                                  onChange={() => toggleDraftCategory(category.slug)}
+                                />
+                                <span className="custom-checkbox">
+                                  {draftCategories.includes(category.slug) ? (
+                                    <Check size={14} aria-hidden />
+                                  ) : null}
+                                </span>
+                                {category.name}
+                              </label>
+                            ))
+                            : null}
                         </div>
                         <div className="popover-actions">
                           <button
@@ -750,6 +988,7 @@ export function AppShell() {
             ) : null}
           </div>
         ) : null}
+        {searchOpen ? renderSearchSurface() : null}
       </header>
 
       <button

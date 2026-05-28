@@ -22,6 +22,7 @@ func NewHandler(service *Service) *Handler {
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/feeds/{id}/items", h.ListFeedItems)
+	r.Get("/items/search", h.SearchItems)
 	r.Post("/items/{id}/save", h.SaveItem)
 	r.Delete("/items/{id}/save", h.UnsaveItem)
 	r.Get("/saved", h.ListSaved)
@@ -64,6 +65,41 @@ func (h *Handler) ListFeedItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.service.ListFeedItems(r.Context(), feedID, userID, query)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, resp)
+}
+
+// SearchItems godoc
+// @Summary Поиск материалов
+// @Description Ищет по материалам из доступных пользователю потоков. Если передан feed_id, область поиска сужается до этого потока.
+// @Tags items
+// @Produce json
+// @Security BearerAuth
+// @Param q query string true "Поисковый запрос"
+// @Param feed_id query string false "Feed ID для поиска внутри одного потока"
+// @Param limit query int false "Лимит, максимум 200"
+// @Success 200 {object} SearchItemsResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/items/search [get]
+func (h *Handler) SearchItems(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+
+	query, err := ParseSearchQuery(r.URL.Query())
+	if err != nil {
+		httpx.RespondError(w, http.StatusBadRequest, "invalid query parameters")
+		return
+	}
+
+	resp, err := h.service.SearchItems(r.Context(), userID, query)
 	if err != nil {
 		h.handleError(w, err)
 		return

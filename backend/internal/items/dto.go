@@ -24,6 +24,12 @@ type ListQuery struct {
 	DateTo     *time.Time
 }
 
+type SearchQuery struct {
+	Query  string
+	FeedID *uuid.UUID
+	Limit  int
+}
+
 type ItemResponse struct {
 	ID          uuid.UUID `json:"id"`
 	SourceID    uuid.UUID `json:"source_id"`
@@ -48,4 +54,9 @@ type FeedItemsResponse struct {
 
 type SavedItemsResponse struct {
 	Items []ItemResponse `json:"items"`
+}
+
+type SearchItemsResponse struct {
+	Items []ItemResponse `json:"items"`
+	Query string         `json:"query"`
 }

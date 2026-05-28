@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/middleware"
 )
@@ -111,6 +112,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, httpx.ErrInvalidInput):
 		httpx.RespondError(w, http.StatusBadRequest, "invalid input")
+	case errors.Is(err, fetch.ErrUnsafeURL):
+		httpx.RespondError(w, http.StatusBadRequest, "unsafe source url")
 	case errors.Is(err, httpx.ErrNotFound):
 		httpx.RespondError(w, http.StatusNotFound, "catalog source or feed not found")
 	case errors.Is(err, ErrRSSNotFound):

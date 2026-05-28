@@ -5,12 +5,14 @@ import type {
   ConnectCatalogSourcesResponse,
   CreateFeedRequest,
   Feed,
+  FeedSource,
   FeedItemsResponse,
   Item,
   LoginRequest,
   RefreshResult,
   RegisterRequest,
   SavedItemsResponse,
+  SearchItemsResponse,
   Topic,
   UpdateFeedRequest,
   User
@@ -156,6 +158,16 @@ export function deleteFeed(feedId: string) {
   });
 }
 
+export function listFeedSources(feedId: string) {
+  return apiRequest<FeedSource[]>(`/api/feeds/${feedId}/sources`);
+}
+
+export function removeFeedSource(feedId: string, sourceId: string) {
+  return apiRequest<void>(`/api/feeds/${feedId}/sources/${sourceId}`, {
+    method: "DELETE"
+  });
+}
+
 export function connectCatalogSources(feedId: string, sourceIds: string[]) {
   return apiRequest<ConnectCatalogSourcesResponse>(
     `/api/feeds/${feedId}/catalog-sources`,
@@ -172,12 +184,22 @@ export function refreshFeed(feedId: string) {
   });
 }
 
+export function refreshSource(sourceId: string) {
+  return apiRequest<RefreshResult>(`/api/sources/${sourceId}/refresh`, {
+    method: "POST"
+  });
+}
+
 export function listCatalogTopics() {
   return apiRequest<Topic[]>("/api/catalog/topics");
 }
 
 export function listCategories() {
   return apiRequest<Category[]>("/api/categories");
+}
+
+export function listFeedCategories(feedId: string) {
+  return apiRequest<Category[]>(`/api/feeds/${feedId}/categories`);
 }
 
 export type ListFeedItemsParams = {
@@ -223,6 +245,26 @@ export function unsaveItem(itemId: string) {
 
 export function listSavedItems() {
   return apiRequest<SavedItemsResponse>("/api/saved?limit=100");
+}
+
+export type SearchItemsOptions = {
+  feedId?: string;
+  limit?: number;
+};
+
+export function searchItems(query: string, options: SearchItemsOptions = {}) {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(options.limit ?? 200)
+  });
+
+  if (options.feedId) {
+    params.set("feed_id", options.feedId);
+  }
+
+  return apiRequest<SearchItemsResponse>(
+    `/api/items/search?${params.toString()}`
+  );
 }
 
 export type SaveToggleVariables = Pick<Item, "id" | "is_saved">;
