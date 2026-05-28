@@ -127,6 +127,16 @@ func TestParseListQueryAllMode(t *testing.T) {
 	}
 }
 
+func TestParseListQueryDefaultsToAllMode(t *testing.T) {
+	query, err := ParseListQuery(map[string][]string{})
+	if err != nil {
+		t.Fatalf("ParseListQuery returned error: %v", err)
+	}
+	if query.Mode != ModeAll {
+		t.Fatalf("Mode = %q, want %q", query.Mode, ModeAll)
+	}
+}
+
 func TestParseListQueryCategory(t *testing.T) {
 	query, err := ParseListQuery(map[string][]string{
 		"category": {"Artificial Intelligence"},

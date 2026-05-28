@@ -19,6 +19,23 @@ var categoryAliases = []categoryAlias{
 	{categorySlug: "marketing", rawTags: []string{"marketing", "маркетинг", "growth"}},
 	{categorySlug: "science", rawTags: []string{"science", "научпоп", "космос", "physics"}},
 	{categorySlug: "hardware", rawTags: []string{"hardware", "железо", "электроника", "embedded", "diy"}},
+	{categorySlug: "sports", rawTags: []string{"sports", "спорт"}},
+	{categorySlug: "football", rawTags: []string{"football", "футбол"}},
+	{categorySlug: "hockey", rawTags: []string{"hockey", "хоккей"}},
+	{categorySlug: "basketball", rawTags: []string{"basketball", "баскетбол"}},
+	{categorySlug: "formula-1", rawTags: []string{"formula-1", "f1", "формула-1", "автоспорт"}},
+	{categorySlug: "tennis", rawTags: []string{"tennis", "теннис"}},
+	{categorySlug: "combat-sports", rawTags: []string{"combat sports", "boxing", "mma", "ufc", "бокс", "единоборства"}},
+	{categorySlug: "volleyball", rawTags: []string{"volleyball", "волейбол"}},
+	{categorySlug: "athletics", rawTags: []string{"athletics", "легкая атлетика"}},
+	{categorySlug: "cycling", rawTags: []string{"cycling", "велоспорт"}},
+	{categorySlug: "water-sports", rawTags: []string{"water sports", "водные виды", "плавание"}},
+	{categorySlug: "chess", rawTags: []string{"chess", "шахматы"}},
+	{categorySlug: "futsal", rawTags: []string{"futsal", "футзал"}},
+	{categorySlug: "handball", rawTags: []string{"handball", "гандбол"}},
+	{categorySlug: "gymnastics", rawTags: []string{"gymnastics", "гимнастика"}},
+	{categorySlug: "figure-skating", rawTags: []string{"figure skating", "фигурное катание"}},
+	{categorySlug: "biathlon", rawTags: []string{"biathlon", "биатлон"}},
 }
 
 var categorySlugByTagSlug = buildCategorySlugIndex()

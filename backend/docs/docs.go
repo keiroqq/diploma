@@ -2348,6 +2348,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "feed_url": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },

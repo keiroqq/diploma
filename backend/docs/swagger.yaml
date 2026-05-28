@@ -55,6 +55,8 @@ definitions:
     properties:
       description:
         type: string
+      feed_url:
+        type: string
       id:
         type: string
       page_url:

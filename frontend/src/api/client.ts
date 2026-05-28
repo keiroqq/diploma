@@ -245,7 +245,7 @@ export type ListFeedItemsParams = {
 
 export function listFeedItems(feedId: string, options: ListFeedItemsParams = {}) {
   const params = new URLSearchParams({
-    mode: options.mode ?? "today",
+    mode: options.mode ?? "all",
     limit: String(options.limit ?? 50)
   });
 

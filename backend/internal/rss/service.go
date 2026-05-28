@@ -12,6 +12,7 @@ import (
 	"github.com/gosimple/slug"
 	"gorm.io/gorm"
 
+	"github.com/keiro/content-digest/backend/internal/catalog"
 	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/models"
@@ -116,7 +117,7 @@ func (s *Service) PreviewSourceItems(ctx context.Context, sourceID uuid.UUID, us
 			return nil, err
 		}
 
-		categorySlugs := categorySlugsForTags(tags)
+		categorySlugs := categorySlugsForTags(append(tags, sourceCategoryTags(*source)...))
 		categoryNames, err := s.categoryNamesBySlug(ctx, categorySlugs)
 		if err != nil {
 			return nil, err
@@ -215,13 +216,14 @@ func (s *Service) refreshSourceRecord(ctx context.Context, source *models.Source
 
 	result.ItemsFound = len(feed.Items)
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		sourceTags := sourceCategoryTags(*source)
 		for _, item := range feed.Items {
 			normalized, tags, err := s.normalizer.Normalize(source.ID, item)
 			if err != nil {
 				return err
 			}
 
-			created, err := s.createItemIfNew(tx, &normalized, tags)
+			created, err := s.createItemIfNew(tx, &normalized, tags, sourceTags)
 			if err != nil {
 				return err
 			}
@@ -260,7 +262,7 @@ func (s *Service) refreshSourceRecord(ctx context.Context, source *models.Source
 	return result, nil
 }
 
-func (s *Service) createItemIfNew(tx *gorm.DB, item *models.FeedItem, tags []string) (bool, error) {
+func (s *Service) createItemIfNew(tx *gorm.DB, item *models.FeedItem, tags []string, sourceTags []string) (bool, error) {
 	var count int64
 	query := tx.Model(&models.FeedItem{}).Where("source_id = ?", item.SourceID)
 
@@ -307,7 +309,7 @@ func (s *Service) createItemIfNew(tx *gorm.DB, item *models.FeedItem, tags []str
 			return false, err
 		}
 	}
-	if err := linkCategoriesForTags(tx, item.ID, tags); err != nil {
+	if err := linkCategoriesForTags(tx, item.ID, append(tags, sourceTags...)); err != nil {
 		return false, err
 	}
 
@@ -449,6 +451,38 @@ func normalizeTagSlug(name string) string {
 		tagSlug = slug.Make(strings.ToLower(strings.TrimSpace(name)))
 	}
 	return tagSlug
+}
+
+func sourceCategoryTags(source models.Source) []string {
+	for _, topic := range catalog.Topics() {
+		for _, catalogSource := range topic.Sources {
+			if matchesCatalogSource(source, catalogSource) {
+				return catalogSource.Tags
+			}
+		}
+	}
+	return nil
+}
+
+func matchesCatalogSource(source models.Source, catalogSource catalog.CatalogSource) bool {
+	sourceURL := normalizeCatalogURL(source.URL)
+	sourceFeedURL := normalizeCatalogURL(source.FeedURL)
+	catalogPageURL := normalizeCatalogURL(catalogSource.PageURL)
+	catalogFeedURL := normalizeCatalogURL(catalogSource.FeedURL)
+
+	if catalogPageURL != "" && (sourceURL == catalogPageURL || sourceFeedURL == catalogPageURL) {
+		return true
+	}
+	if catalogFeedURL != "" && (sourceURL == catalogFeedURL || sourceFeedURL == catalogFeedURL) {
+		return true
+	}
+
+	catalogTitle := strings.ToLower(strings.TrimSpace(catalogSource.Title))
+	return catalogTitle != "" && strings.Contains(strings.ToLower(source.Name), catalogTitle)
+}
+
+func normalizeCatalogURL(value string) string {
+	return strings.TrimRight(strings.TrimSpace(value), "/")
 }
 
 func (s *Service) getAccessibleSource(ctx context.Context, sourceID uuid.UUID, userID uuid.UUID) (*models.Source, error) {

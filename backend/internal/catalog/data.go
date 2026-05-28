@@ -13,6 +13,7 @@ type CatalogSource struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	PageURL     string   `json:"page_url"`
+	FeedURL     string   `json:"feed_url,omitempty"`
 	Tags        []string `json:"tags"`
 }
 
@@ -69,6 +70,29 @@ func Topics() []Topic {
 				habrSource("habr-diy-news", "DIY", "Новости DIY, электроники и инженерных проектов на Хабре.", "https://habr.com/ru/hubs/diy/news/", []string{"diy", "electronics", "embedded"}),
 			},
 		},
+		{
+			ID:          "sports",
+			Title:       "Спорт",
+			Description: "Новости футбола, хоккея, баскетбола, автоспорта, единоборств и других видов спорта.",
+			Sources: []CatalogSource{
+				sportsSource("sports-football-news", "Футбол", "Новости футбола на Sports.ru.", "https://www.sports.ru/rss/rubric/208.xml", []string{"football", "спорт", "футбол"}),
+				sportsSource("sports-hockey-news", "Хоккей", "Новости хоккея на Sports.ru.", "https://www.sports.ru/rss/rubric/209.xml", []string{"hockey", "спорт", "хоккей"}),
+				sportsSource("sports-basketball-news", "Баскетбол", "Новости баскетбола на Sports.ru.", "https://www.sports.ru/rss/rubric/210.xml", []string{"basketball", "спорт", "баскетбол"}),
+				sportsSource("sports-formula-1-news", "Формула-1", "Новости Формулы-1 на Sports.ru.", "https://www.sports.ru/rss/rubric/211.xml", []string{"formula-1", "спорт", "автоспорт"}),
+				sportsSource("sports-tennis-news", "Теннис", "Новости тенниса на Sports.ru.", "https://www.sports.ru/rss/rubric/212.xml", []string{"tennis", "спорт", "теннис"}),
+				sportsSource("sports-fighting-news", "Бокс/MMA/UFC", "Новости бокса, MMA и UFC на Sports.ru.", "https://www.sports.ru/rss/rubric/213.xml", []string{"boxing", "mma", "ufc", "спорт"}),
+				sportsSource("sports-volleyball-news", "Волейбол", "Новости волейбола на Sports.ru.", "https://www.sports.ru/rss/rubric/214.xml", []string{"volleyball", "спорт", "волейбол"}),
+				sportsSource("sports-athletics-news", "Легкая атлетика", "Новости легкой атлетики на Sports.ru.", "https://www.sports.ru/rss/rubric/215.xml", []string{"athletics", "спорт", "легкая атлетика"}),
+				sportsSource("sports-cycling-news", "Велоспорт", "Новости велоспорта на Sports.ru.", "https://www.sports.ru/rss/rubric/216.xml", []string{"cycling", "спорт", "велоспорт"}),
+				sportsSource("sports-water-sports-news", "Водные виды", "Новости водных видов спорта на Sports.ru.", "https://www.sports.ru/rss/rubric/217.xml", []string{"water sports", "спорт", "плавание"}),
+				sportsSource("sports-chess-news", "Шахматы", "Новости шахмат на Sports.ru.", "https://www.sports.ru/rss/rubric/218.xml", []string{"chess", "спорт", "шахматы"}),
+				sportsSource("sports-futsal-news", "Футзал", "Новости футзала на Sports.ru.", "https://www.sports.ru/rss/rubric/219.xml", []string{"futsal", "спорт", "футзал"}),
+				sportsSource("sports-handball-news", "Гандбол", "Новости гандбола на Sports.ru.", "https://www.sports.ru/rss/rubric/220.xml", []string{"handball", "спорт", "гандбол"}),
+				sportsSource("sports-gymnastics-news", "Гимнастика", "Новости гимнастики на Sports.ru.", "https://www.sports.ru/rss/rubric/221.xml", []string{"gymnastics", "спорт", "гимнастика"}),
+				sportsSource("sports-figure-skating-news", "Фигурное катание", "Новости фигурного катания на Sports.ru.", "https://www.sports.ru/rss/rubric/223.xml", []string{"figure skating", "спорт", "фигурное катание"}),
+				sportsSource("sports-biathlon-news", "Биатлон", "Новости биатлона на Sports.ru.", "https://www.sports.ru/rss/rubric/225.xml", []string{"biathlon", "спорт", "биатлон"}),
+			},
+		},
 	}
 }
 
@@ -91,5 +115,28 @@ func habrSource(id string, title string, description string, pageURL string, tag
 		Description: description,
 		PageURL:     pageURL,
 		Tags:        tags,
+	}
+}
+
+func sportsSource(id string, title string, description string, feedURL string, tags []string) CatalogSource {
+	return CatalogSource{
+		ID:          id,
+		Provider:    "sports",
+		Title:       title,
+		Description: description,
+		PageURL:     feedURL,
+		FeedURL:     feedURL,
+		Tags:        tags,
+	}
+}
+
+func ProviderTitle(provider string) string {
+	switch provider {
+	case "habr":
+		return "Habr"
+	case "sports":
+		return "Sports.ru"
+	default:
+		return provider
 	}
 }

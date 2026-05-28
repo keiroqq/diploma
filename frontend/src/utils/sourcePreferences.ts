@@ -49,7 +49,8 @@ export function saveSourcePreferences(preferences: SourcePreferences) {
 
 export function providerLabel(provider: string) {
   const labels: Record<string, string> = {
-    habr: "Хабр"
+    habr: "Хабр",
+    sports: "Sports.ru"
   };
 
   return labels[provider] ?? provider;
@@ -75,6 +76,10 @@ export function catalogSourceEnabled(source: CatalogSource, preferences: SourceP
 }
 
 export function catalogFeedUrl(source: CatalogSource) {
+  if (source.feed_url) {
+    return source.feed_url;
+  }
+
   if (source.provider !== "habr") {
     return source.page_url;
   }
