@@ -90,6 +90,7 @@ export type CatalogSource = {
   title: string;
   description: string;
   page_url: string;
+  feed_url?: string;
   tags: string[];
 };
 

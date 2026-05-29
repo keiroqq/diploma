@@ -31,7 +31,7 @@ export function getSelectedCategorySlugs(searchParams: URLSearchParams) {
 }
 
 export function getDateFilter(searchParams: URLSearchParams): DateFilter {
-  const preset = (searchParams.get("date") ?? "today") as DatePreset;
+  const preset = (searchParams.get("date") ?? "all") as DatePreset;
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
 

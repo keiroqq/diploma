@@ -29,7 +29,7 @@ func NewService(repo *Repository) *Service {
 
 func (s *Service) ListFeedItems(ctx context.Context, feedID uuid.UUID, userID uuid.UUID, query ListQuery) (*FeedItemsResponse, error) {
 	if query.Mode == "" {
-		query.Mode = ModeToday
+		query.Mode = ModeAll
 	}
 	query.Category = strings.TrimSpace(query.Category)
 	if query.Mode != ModeToday && query.Mode != ModeArchive && query.Mode != ModeAll {
@@ -309,7 +309,7 @@ func itemResponse(item models.FeedItem, score int, isSaved bool) ItemResponse {
 }
 
 func ParseListQuery(values map[string][]string) (ListQuery, error) {
-	query := ListQuery{Mode: ModeToday, Limit: 20}
+	query := ListQuery{Mode: ModeAll, Limit: 20}
 	if rawMode := firstQuery(values, "mode"); rawMode != "" {
 		query.Mode = ListMode(rawMode)
 	}

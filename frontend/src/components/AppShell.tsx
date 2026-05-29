@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDown,
   Bookmark,
   CalendarDays,
   Check,
@@ -67,6 +68,12 @@ function byPublishedDesc(left: Item, right: Item) {
   return new Date(right.published_at).getTime() - new Date(left.published_at).getTime();
 }
 
+const FEED_SWITCH_BOTTOM_THRESHOLD = 8;
+const FEED_SWITCH_WHEEL_THRESHOLD = 340;
+const FEED_SWITCH_TOUCH_THRESHOLD = 150;
+const FEED_SWITCH_COOLDOWN_MS = 800;
+const FEED_SWITCH_RESET_DELAY_MS = 520;
+
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,6 +99,15 @@ export function AppShell() {
   const feedScrollTrackRef = useRef<HTMLDivElement>(null);
   const feedPillRefs = useRef<Record<string, HTMLElement | null>>({});
   const feedScrollHoldRef = useRef<number | null>(null);
+  const feedSwitchResetTimerRef = useRef<number | null>(null);
+  const feedSwitchWheelDistanceRef = useRef(0);
+  const feedSwitchLockedRef = useRef(false);
+  const feedSwitchTouchRef = useRef({
+    active: false,
+    distance: 0,
+    lastY: 0,
+    ready: false
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
@@ -106,6 +122,7 @@ export function AppShell() {
     progress: 0,
     thumbWidth: 100
   });
+  const [feedSwitchProgress, setFeedSwitchProgress] = useState(0);
 
   const feedsQuery = useQuery({
     queryKey: ["feeds"],
@@ -182,6 +199,15 @@ export function AppShell() {
     location.pathname.startsWith("/feeds/") || location.pathname === "/saved";
   const activeFeedPillId =
     searchOpen && searchScope.type === "feed" ? searchScope.feedId : feedId;
+  const feeds = feedsQuery.data ?? [];
+  const currentFeedIndex = feedId
+    ? feeds.findIndex((feed) => feed.id === feedId)
+    : -1;
+  const nextFeed = currentFeedIndex >= 0 ? feeds[currentFeedIndex + 1] : undefined;
+  const feedSwitchIndicatorStyle = {
+    "--feed-switch-color": nextFeed?.theme_color || "#2563eb",
+    "--feed-switch-progress": feedSwitchProgress
+  } as CSSProperties;
 
   const searchItemsQuery = useQuery({
     queryKey: [
@@ -344,10 +370,233 @@ export function AppShell() {
     };
   }, [feedsQuery.data?.length, hasFeedTools]);
 
+  useEffect(() => {
+    if (!isFeedRoute || !nextFeed || searchOpen) {
+      resetFeedSwitchGesture();
+      return;
+    }
+
+    function handleWheel(event: globalThis.WheelEvent) {
+      if (event.defaultPrevented || feedSwitchLockedRef.current) {
+        return;
+      }
+      if (event.deltaY <= 0 || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        resetFeedSwitchGesture();
+        return;
+      }
+      if (!canStartFeedSwitchGesture(event.target)) {
+        resetFeedSwitchGesture();
+        return;
+      }
+
+      feedSwitchWheelDistanceRef.current += event.deltaY;
+      setFeedSwitchGestureProgress(
+        feedSwitchWheelDistanceRef.current / FEED_SWITCH_WHEEL_THRESHOLD
+      );
+
+      if (feedSwitchWheelDistanceRef.current >= FEED_SWITCH_WHEEL_THRESHOLD) {
+        event.preventDefault();
+        switchToNextFeed();
+      } else {
+        scheduleFeedSwitchReset();
+      }
+    }
+
+    function handleTouchStart(event: TouchEvent) {
+      const touch = event.touches[0];
+      if (!touch || !canStartFeedSwitchGesture(event.target)) {
+        resetFeedSwitchGesture();
+        return;
+      }
+
+      feedSwitchTouchRef.current = {
+        active: true,
+        distance: 0,
+        lastY: touch.clientY,
+        ready: false
+      };
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      const touch = event.touches[0];
+      const state = feedSwitchTouchRef.current;
+      if (!touch || !state.active || feedSwitchLockedRef.current) {
+        return;
+      }
+
+      const deltaY = state.lastY - touch.clientY;
+      state.lastY = touch.clientY;
+
+      if (deltaY <= 0) {
+        state.distance = Math.max(0, state.distance + deltaY);
+        setFeedSwitchGestureProgress(state.distance / FEED_SWITCH_TOUCH_THRESHOLD);
+        state.ready = state.distance >= FEED_SWITCH_TOUCH_THRESHOLD;
+        return;
+      }
+
+      state.distance += deltaY;
+      setFeedSwitchGestureProgress(state.distance / FEED_SWITCH_TOUCH_THRESHOLD);
+      if (state.distance >= FEED_SWITCH_TOUCH_THRESHOLD) {
+        event.preventDefault();
+        state.ready = true;
+      }
+    }
+
+    function handleTouchEnd() {
+      if (feedSwitchTouchRef.current.ready) {
+        switchToNextFeed();
+      } else {
+        resetFeedSwitchGesture();
+      }
+    }
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", resetFeedSwitchGesture, { passive: true });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", resetFeedSwitchGesture);
+      clearFeedSwitchResetTimer();
+    };
+  }, [
+    drawerOpen,
+    filtersOpen,
+    isFeedRoute,
+    location.search,
+    nextFeed?.id,
+    popoverOpen,
+    searchOpen
+  ]);
+
   function handleLogout() {
     queryClient.clear();
     logout();
     navigate("/login", { replace: true });
+  }
+
+  function isPageAtBottom() {
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    const scrollTop = scrollingElement.scrollTop;
+    const viewportHeight = window.innerHeight || scrollingElement.clientHeight;
+    const scrollHeight = Math.max(
+      scrollingElement.scrollHeight,
+      document.body.scrollHeight
+    );
+
+    return scrollTop + viewportHeight >= scrollHeight - FEED_SWITCH_BOTTOM_THRESHOLD;
+  }
+
+  function canStartFeedSwitchGesture(target: EventTarget | null) {
+    if (
+      !isFeedRoute ||
+      searchOpen ||
+      drawerOpen ||
+      filtersOpen ||
+      popoverOpen ||
+      !nextFeed ||
+      feedSwitchLockedRef.current ||
+      !isPageAtBottom()
+    ) {
+      return false;
+    }
+
+    const element = target instanceof Element ? target : null;
+    if (
+      element?.closest(
+        ".drawer, .feed-strip-frame, .filter-panel, .filter-popover, input, textarea, select"
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function resetFeedSwitchGesture() {
+    clearFeedSwitchResetTimer();
+    clearFeedSwitchGestureDistances();
+    setFeedSwitchProgress(0);
+  }
+
+  function clearFeedSwitchGestureDistances() {
+    feedSwitchWheelDistanceRef.current = 0;
+    feedSwitchTouchRef.current = {
+      active: false,
+      distance: 0,
+      lastY: 0,
+      ready: false
+    };
+  }
+
+  function clearFeedSwitchResetTimer() {
+    if (feedSwitchResetTimerRef.current !== null) {
+      window.clearTimeout(feedSwitchResetTimerRef.current);
+      feedSwitchResetTimerRef.current = null;
+    }
+  }
+
+  function scheduleFeedSwitchReset() {
+    clearFeedSwitchResetTimer();
+    feedSwitchResetTimerRef.current = window.setTimeout(() => {
+      resetFeedSwitchGesture();
+    }, FEED_SWITCH_RESET_DELAY_MS);
+  }
+
+  function setFeedSwitchGestureProgress(progress: number) {
+    clearFeedSwitchResetTimer();
+    const nextProgress = Math.min(1, Math.max(0, progress));
+    setFeedSwitchProgress(nextProgress);
+    if (nextProgress > 0) {
+      scrollFeedSwitchZoneIntoView();
+    }
+  }
+
+  function scrollFeedSwitchZoneIntoView() {
+    window.requestAnimationFrame(() => {
+      const scrollingElement = document.scrollingElement ?? document.documentElement;
+      const maxScroll = scrollingElement.scrollHeight - scrollingElement.clientHeight;
+      if (maxScroll > 0) {
+        window.scrollTo({ top: maxScroll, behavior: "auto" });
+      }
+    });
+  }
+
+  function switchToNextFeed() {
+    if (!nextFeed || feedSwitchLockedRef.current) {
+      return;
+    }
+
+    feedSwitchLockedRef.current = true;
+    clearFeedSwitchResetTimer();
+    clearFeedSwitchGestureDistances();
+    setFeedSwitchProgress(1);
+    scrollFeedSwitchZoneIntoView();
+    setFiltersOpen(false);
+    closeFilterPopovers();
+
+    feedPillRefs.current[nextFeed.id]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center"
+    });
+
+    window.setTimeout(() => {
+      navigate(`/feeds/${nextFeed.id}${location.search}`);
+
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      });
+      window.setTimeout(() => {
+        setFeedSwitchProgress(0);
+        feedSwitchLockedRef.current = false;
+      }, FEED_SWITCH_COOLDOWN_MS);
+    }, 120);
   }
 
   function closeDrawer() {
@@ -385,7 +634,7 @@ export function AppShell() {
       next.delete("date_from");
       next.delete("date_to");
 
-      if (preset === "today") {
+      if (preset === "all") {
         next.delete("date");
       } else {
         next.set("date", preset);
@@ -1126,6 +1375,20 @@ export function AppShell() {
       <main className="app-main">
         <Outlet />
       </main>
+
+      {nextFeed && isFeedRoute && !searchOpen ? (
+        <div className="feed-switch-zone" style={feedSwitchIndicatorStyle}>
+          <div
+            className={`feed-switch-indicator ${feedSwitchProgress > 0 ? "visible" : ""}`}
+            aria-hidden={feedSwitchProgress <= 0}
+          >
+            <strong>{nextFeed.name}</strong>
+            <span className="feed-switch-circle">
+              <ArrowDown size={24} aria-hidden />
+            </span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

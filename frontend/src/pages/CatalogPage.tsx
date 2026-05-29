@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Palette, Plus, Rss } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  Loader2,
+  Palette,
+  Plus,
+  Rss
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -13,7 +23,7 @@ import {
   previewSourceItems,
   refreshFeed
 } from "../api/client";
-import type { Source } from "../api/types";
+import type { CatalogSource, Source } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { errorMessage } from "../utils/errors";
@@ -32,6 +42,70 @@ function customSelectionKey(sourceID: string) {
   return `source:${sourceID}`;
 }
 
+type CatalogFolder = {
+  id: string;
+  title: string;
+  description: string;
+  sources: CatalogSource[];
+};
+
+function sourceCard(
+  source: CatalogSource,
+  checked: boolean,
+  onToggle: () => void
+) {
+  return (
+    <label className={`source-card ${checked ? "selected" : ""}`} key={source.id}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+      />
+      <span className="source-check" aria-hidden>
+        {checked ? <Check size={16} /> : <Rss size={16} />}
+      </span>
+      <span className="source-card-body">
+        <strong>{source.title}</strong>
+        <span>{source.description}</span>
+        <span className="chip-row">
+          {source.tags.slice(0, 4).map((tag) => (
+            <span className="chip chip-muted" key={tag}>
+              {tag}
+            </span>
+          ))}
+        </span>
+      </span>
+    </label>
+  );
+}
+
+function customSourceCard(
+  source: Source,
+  checked: boolean,
+  onToggle: () => void
+) {
+  return (
+    <label className={`source-card ${checked ? "selected" : ""}`} key={source.id}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+      />
+      <span className="source-check" aria-hidden>
+        {checked ? <Check size={16} /> : <Rss size={16} />}
+      </span>
+      <span className="source-card-body">
+        <strong>{source.name}</strong>
+        <span>{source.description || source.feed_url}</span>
+        <span className="chip-row">
+          <span className="chip chip-muted">rss</span>
+          <span className="chip chip-muted">local</span>
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function CatalogPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,6 +114,7 @@ export function CatalogPage() {
   const [feedName, setFeedName] = useState("Моя IT-лента");
   const [themeColor, setThemeColor] = useState("#2563eb");
   const [sourcePreferences] = useState(loadSourcePreferences);
+  const [openedFolders, setOpenedFolders] = useState<Set<string>>(new Set());
   const targetFeedId = searchParams.get("feed_id");
 
   const topicsQuery = useQuery({
@@ -76,6 +151,15 @@ export function CatalogPage() {
       )
       .sort((left, right) => left.name.localeCompare(right.name, "ru"));
   }, [sourcesQuery.data]);
+
+  const catalogFolders = useMemo<CatalogFolder[]>(() => {
+    return topics.map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      description: topic.description,
+      sources: topic.sources
+    }));
+  }, [topics]);
 
   const selectedCatalogSources = useMemo(() => {
     const topics = topicsQuery.data ?? [];
@@ -166,6 +250,20 @@ export function CatalogPage() {
         next.delete(selectionKey);
       } else {
         next.add(selectionKey);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleFolder(folderId: string) {
+    setOpenedFolders((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
       }
 
       return next;
@@ -267,81 +365,91 @@ export function CatalogPage() {
         />
       ) : null}
 
-      <div className="topic-list">
-        {topics.map((topic) => (
-          <section className="topic-section" key={topic.id}>
-            <div className="topic-heading">
-              <h2>{topic.title}</h2>
-              <p>{topic.description}</p>
-            </div>
-            <div className="source-grid">
-              {topic.sources.map((source) => {
-                const selectionKey = catalogSelectionKey(source.id);
-                const checked = selected.has(selectionKey);
+      <div className="catalog-folder-list">
+        {catalogFolders.map((folder) => {
+          const opened = openedFolders.has(folder.id);
+          const sourceCount = folder.sources.length;
 
-                return (
-                  <label className={`source-card ${checked ? "selected" : ""}`} key={source.id}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleSource(selectionKey)}
-                    />
-                    <span className="source-check" aria-hidden>
-                      {checked ? <Check size={16} /> : <Rss size={16} />}
-                    </span>
-                    <span className="source-card-body">
-                      <strong>{source.title}</strong>
-                      <span>{source.description}</span>
-                      <span className="chip-row">
-                        {source.tags.slice(0, 4).map((tag) => (
-                          <span className="chip chip-muted" key={tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+          return (
+            <section className="catalog-folder" key={folder.id}>
+              <button
+                className="catalog-folder-button"
+                type="button"
+                onClick={() => toggleFolder(folder.id)}
+                aria-expanded={opened}
+              >
+                <span className="catalog-folder-title">
+                  {opened ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}
+                  {opened ? <FolderOpen size={20} aria-hidden /> : <Folder size={20} aria-hidden />}
+                  <span>
+                    <strong>{folder.title}</strong>
+                    <small>{folder.description}</small>
+                  </span>
+                </span>
+                <span className="catalog-folder-count">{sourceCount} источников</span>
+              </button>
 
-        {customSources.length ? (
-          <section className="topic-section" key="custom-sources">
-            <div className="topic-heading">
-              <h2>Свои источники</h2>
-              <p>Пользовательские RSS-источники с локальным хранением материалов.</p>
-            </div>
-            <div className="source-grid">
-              {customSources.map((source) => {
-                const selectionKey = customSelectionKey(source.id);
-                const checked = selected.has(selectionKey);
+              {opened ? (
+                <div className="catalog-folder-body">
+                  <section className="topic-section">
+                    <div className="source-grid">
+                      {folder.sources.map((source) => {
+                        const selectionKey = catalogSelectionKey(source.id);
+                        return sourceCard(
+                          source,
+                          selected.has(selectionKey),
+                          () => toggleSource(selectionKey)
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
 
-                return (
-                  <label className={`source-card ${checked ? "selected" : ""}`} key={source.id}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleSource(selectionKey)}
-                    />
-                    <span className="source-check" aria-hidden>
-                      {checked ? <Check size={16} /> : <Rss size={16} />}
-                    </span>
-                    <span className="source-card-body">
-                      <strong>{source.name}</strong>
-                      <span>{source.description || source.feed_url}</span>
-                      <span className="chip-row">
-                        <span className="chip chip-muted">rss</span>
-                        <span className="chip chip-muted">local</span>
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
+        <section className="catalog-folder" key="custom-sources">
+          <button
+            className="catalog-folder-button"
+            type="button"
+            onClick={() => toggleFolder("custom-sources")}
+            aria-expanded={openedFolders.has("custom-sources")}
+          >
+            <span className="catalog-folder-title">
+              {openedFolders.has("custom-sources") ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}
+              {openedFolders.has("custom-sources") ? <FolderOpen size={20} aria-hidden /> : <Folder size={20} aria-hidden />}
+              <span>
+                <strong>Свои источники</strong>
+                <small>Пользовательские RSS-источники с локальным хранением материалов.</small>
+              </span>
+            </span>
+            <span className="catalog-folder-count">{customSources.length} источников</span>
+          </button>
+
+          {openedFolders.has("custom-sources") ? (
+            <div className="catalog-folder-body">
+              {customSources.length ? (
+                <section className="topic-section">
+                  <div className="source-grid">
+                    {customSources.map((source) => {
+                      const selectionKey = customSelectionKey(source.id);
+                      return customSourceCard(
+                        source,
+                        selected.has(selectionKey),
+                        () => toggleSource(selectionKey)
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : (
+                <p className="catalog-folder-empty">
+                  В этой папке пока нет источников. Добавить RSS можно на вкладке "Источники".
+                </p>
+              )}
             </div>
-          </section>
-        ) : null}
+          ) : null}
+        </section>
       </div>
     </section>
   );

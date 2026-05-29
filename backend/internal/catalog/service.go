@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -58,12 +59,12 @@ func (s *Service) ConnectCatalogSources(ctx context.Context, feedID uuid.UUID, u
 			return nil, httpx.ErrNotFound
 		}
 
-		discovered, err := s.discoverer.Discover(ctx, catalogSource.PageURL)
+		feedURL, err := s.feedURLForCatalogSource(ctx, catalogSource)
 		if err != nil {
 			return nil, err
 		}
 
-		source, err := s.findOrCreateSource(ctx, catalogSource, discovered.FeedURL)
+		source, err := s.findOrCreateSource(ctx, catalogSource, feedURL)
 		if err != nil {
 			return nil, err
 		}
@@ -94,6 +95,21 @@ func (s *Service) ConnectCatalogSources(ctx context.Context, feedID uuid.UUID, u
 	return response, nil
 }
 
+func (s *Service) feedURLForCatalogSource(ctx context.Context, catalogSource CatalogSource) (string, error) {
+	if strings.TrimSpace(catalogSource.FeedURL) != "" {
+		if err := fetch.ValidateURL(catalogSource.FeedURL); err != nil {
+			return "", err
+		}
+		return catalogSource.FeedURL, nil
+	}
+
+	discovered, err := s.discoverer.Discover(ctx, catalogSource.PageURL)
+	if err != nil {
+		return "", err
+	}
+	return discovered.FeedURL, nil
+}
+
 func (s *Service) findOrCreateSource(ctx context.Context, catalogSource CatalogSource, feedURL string) (*models.Source, error) {
 	source, err := s.repo.FindPublicSourceByCatalogPage(ctx, catalogSource.PageURL)
 	if err == nil {
@@ -112,7 +128,7 @@ func (s *Service) findOrCreateSource(ctx context.Context, catalogSource CatalogS
 	source = &models.Source{
 		ID:          uuid.New(),
 		CreatedBy:   nil,
-		Name:        "Habr: " + catalogSource.Title,
+		Name:        ProviderTitle(catalogSource.Provider) + ": " + catalogSource.Title,
 		Type:        models.SourceTypeRSS,
 		URL:         catalogSource.PageURL,
 		FeedURL:     feedURL,

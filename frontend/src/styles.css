@@ -202,6 +202,74 @@ img {
   padding-top: calc(var(--topbar-offset) + 10px);
 }
 
+.feed-switch-zone {
+  width: min(100%, 1040px);
+  height: calc(178px * var(--feed-switch-progress));
+  min-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 0 16px;
+  transition: height 0.12s ease;
+}
+
+.feed-switch-indicator {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px) scale(0.97);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.feed-switch-indicator.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.feed-switch-indicator strong {
+  max-width: min(78vw, 360px);
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-switch-circle {
+  position: relative;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--feed-switch-color) 58%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: var(--shadow);
+  color: color-mix(in srgb, var(--feed-switch-color) 56%, var(--text));
+}
+
+.feed-switch-circle::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--feed-switch-color) 72%, transparent);
+  content: "";
+  transform: scale(var(--feed-switch-progress));
+  transition: transform 0.06s linear;
+}
+
+.feed-switch-circle svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 1px 1px var(--surface));
+}
+
 .icon-button,
 .primary-button,
 .secondary-button,
@@ -1685,6 +1753,99 @@ img {
   padding: 0;
 }
 
+.catalog-folder-list {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-folder {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.catalog-folder-button {
+  display: grid;
+  width: 100%;
+  min-height: 70px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 14px;
+  text-align: left;
+}
+
+.catalog-folder-button:hover,
+.catalog-folder-button:focus-visible {
+  background: var(--surface-soft);
+}
+
+.catalog-folder-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.catalog-folder-title > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.catalog-folder-title > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.catalog-folder-title strong,
+.catalog-folder-title small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-folder-title strong {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.catalog-folder-title small {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.catalog-folder-count {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.catalog-folder-body {
+  display: grid;
+  gap: 18px;
+  padding: 0 14px 14px;
+}
+
+.catalog-folder-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 .topic-list {
   display: grid;
   gap: 22px;
@@ -1707,6 +1868,7 @@ img {
 .source-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: start;
   gap: 12px;
 }
 
@@ -1715,7 +1877,6 @@ img {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 11px;
-  min-height: 148px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -2413,6 +2574,37 @@ img {
 
   .builder-actions {
     justify-content: flex-end;
+  }
+
+  .catalog-folder-button {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .catalog-folder-title {
+    align-items: flex-start;
+  }
+
+  .catalog-folder-title strong {
+    font-size: 16px;
+  }
+
+  .catalog-folder-title small {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .catalog-folder-count {
+    justify-self: start;
+  }
+
+  .catalog-folder-body {
+    gap: 14px;
+    padding: 0 12px 12px;
   }
 
   .source-folder-header {
