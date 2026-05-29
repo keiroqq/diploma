@@ -36,6 +36,23 @@ var categoryAliases = []categoryAlias{
 	{categorySlug: "gymnastics", rawTags: []string{"gymnastics", "гимнастика"}},
 	{categorySlug: "figure-skating", rawTags: []string{"figure skating", "фигурное катание"}},
 	{categorySlug: "biathlon", rawTags: []string{"biathlon", "биатлон"}},
+	{categorySlug: "business", rawTags: []string{"business", "бизнес"}},
+	{categorySlug: "economics", rawTags: []string{"economics", "экономика"}},
+	{categorySlug: "finance", rawTags: []string{"finance", "финансы"}},
+	{categorySlug: "opinion", rawTags: []string{"opinion", "мнения", "колонки"}},
+	{categorySlug: "politics", rawTags: []string{"politics", "политика"}},
+	{categorySlug: "technology", rawTags: []string{"technology", "технологии"}},
+	{categorySlug: "realty", rawTags: []string{"realty", "недвижимость"}},
+	{categorySlug: "auto", rawTags: []string{"auto", "авто", "автомобили"}},
+	{categorySlug: "lifestyle", rawTags: []string{"lifestyle", "стиль жизни"}},
+	{categorySlug: "world", rawTags: []string{"world", "мир", "в мире"}},
+	{categorySlug: "society", rawTags: []string{"society", "общество"}},
+	{categorySlug: "accidents", rawTags: []string{"accidents", "происшествия", "чп"}},
+	{categorySlug: "culture", rawTags: []string{"culture", "культура"}},
+	{categorySlug: "market", rawTags: []string{"market", "потребительский рынок"}},
+	{categorySlug: "telecom", rawTags: []string{"telecom", "телекоммуникации"}},
+	{categorySlug: "technology", rawTags: []string{"hi-tech", "hitech"}},
+	{categorySlug: "regions", rawTags: []string{"regions", "регионы", "санкт-петербург", "екатеринбург", "новосибирск", "самара", "казань", "краснодар"}},
 }
 
 var categorySlugByTagSlug = buildCategorySlugIndex()

@@ -50,7 +50,9 @@ export function saveSourcePreferences(preferences: SourcePreferences) {
 export function providerLabel(provider: string) {
   const labels: Record<string, string> = {
     habr: "Хабр",
-    sports: "Sports.ru"
+    sports: "Sports.ru",
+    vedomosti: "Ведомости",
+    kommersant: "Коммерсантъ"
   };
 
   return labels[provider] ?? provider;

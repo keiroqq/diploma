@@ -23,7 +23,7 @@ import {
   previewSourceItems,
   refreshFeed
 } from "../api/client";
-import type { CatalogSource, Source, Topic } from "../api/types";
+import type { CatalogSource, Source } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
 import { errorMessage } from "../utils/errors";
@@ -31,8 +31,7 @@ import { cacheLocalSourceItems } from "../utils/localItems";
 import {
   catalogSourceEnabled,
   catalogSourceTitle,
-  loadSourcePreferences,
-  providerLabel
+  loadSourcePreferences
 } from "../utils/sourcePreferences";
 
 function catalogSelectionKey(sourceID: string) {
@@ -47,7 +46,7 @@ type CatalogFolder = {
   id: string;
   title: string;
   description: string;
-  topics: Topic[];
+  sources: CatalogSource[];
 };
 
 function sourceCard(
@@ -154,58 +153,12 @@ export function CatalogPage() {
   }, [sourcesQuery.data]);
 
   const catalogFolders = useMemo<CatalogFolder[]>(() => {
-    const knownProviders = new Set(["habr", "sports"]);
-    const folderDefinitions = [
-      {
-        id: "it",
-        title: "IT: Хабр",
-        description: "Разработка, инфраструктура, безопасность, AI, продуктовые и научно-технические темы.",
-        providers: ["habr"]
-      },
-      {
-        id: "sports",
-        title: "Спорт: Sports",
-        description: "Футбол, хоккей, баскетбол, автоспорт, теннис, единоборства и другие виды спорта от Sports.ru.",
-        providers: ["sports"]
-      }
-    ];
-
-    const topicsForProviders = (providers: string[]) =>
-      topics
-        .map((topic) => ({
-          ...topic,
-          sources: topic.sources.filter((source) => providers.includes(source.provider))
-        }))
-        .filter((topic) => topic.sources.length > 0);
-
-    const folders = folderDefinitions
-      .map((definition) => ({
-        id: definition.id,
-        title: definition.title,
-        description: definition.description,
-        topics: topicsForProviders(definition.providers)
-      }))
-      .filter((folder) => folder.topics.length > 0);
-
-    const otherProviders = Array.from(
-      new Set(
-        topics
-          .flatMap((topic) => topic.sources)
-          .map((source) => source.provider)
-          .filter((provider) => !knownProviders.has(provider))
-      )
-    ).sort((left, right) => providerLabel(left).localeCompare(providerLabel(right), "ru"));
-
-    for (const provider of otherProviders) {
-      folders.push({
-        id: `provider-${provider}`,
-        title: providerLabel(provider),
-        description: "Дополнительные серверные RSS-источники.",
-        topics: topicsForProviders([provider])
-      });
-    }
-
-    return folders;
+    return topics.map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      description: topic.description,
+      sources: topic.sources
+    }));
   }, [topics]);
 
   const selectedCatalogSources = useMemo(() => {
@@ -415,10 +368,7 @@ export function CatalogPage() {
       <div className="catalog-folder-list">
         {catalogFolders.map((folder) => {
           const opened = openedFolders.has(folder.id);
-          const sourceCount = folder.topics.reduce(
-            (count, topic) => count + topic.sources.length,
-            0
-          );
+          const sourceCount = folder.sources.length;
 
           return (
             <section className="catalog-folder" key={folder.id}>
@@ -441,24 +391,18 @@ export function CatalogPage() {
 
               {opened ? (
                 <div className="catalog-folder-body">
-                  {folder.topics.map((topic) => (
-                    <section className="topic-section" key={topic.id}>
-                      <div className="topic-heading">
-                        <h2>{topic.title}</h2>
-                        <p>{topic.description}</p>
-                      </div>
-                      <div className="source-grid">
-                        {topic.sources.map((source) => {
-                          const selectionKey = catalogSelectionKey(source.id);
-                          return sourceCard(
-                            source,
-                            selected.has(selectionKey),
-                            () => toggleSource(selectionKey)
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                  <section className="topic-section">
+                    <div className="source-grid">
+                      {folder.sources.map((source) => {
+                        const selectionKey = catalogSelectionKey(source.id);
+                        return sourceCard(
+                          source,
+                          selected.has(selectionKey),
+                          () => toggleSource(selectionKey)
+                        );
+                      })}
+                    </div>
+                  </section>
                 </div>
               ) : null}
             </section>

@@ -17,6 +17,14 @@ func TestCategorySlugsForTagsNormalizesAliases(t *testing.T) {
 		{name: "football", tags: []string{"Футбол"}, want: "football"},
 		{name: "combat sports", tags: []string{"UFC"}, want: "combat-sports"},
 		{name: "figure skating", tags: []string{"фигурное катание"}, want: "figure-skating"},
+		{name: "business", tags: []string{"Бизнес"}, want: "business"},
+		{name: "politics", tags: []string{"политика"}, want: "politics"},
+		{name: "realty", tags: []string{"недвижимость"}, want: "realty"},
+		{name: "world", tags: []string{"Мир"}, want: "world"},
+		{name: "accidents", tags: []string{"Происшествия"}, want: "accidents"},
+		{name: "society", tags: []string{"общество"}, want: "society"},
+		{name: "telecom", tags: []string{"Телекоммуникации"}, want: "telecom"},
+		{name: "regions", tags: []string{"Санкт-Петербург"}, want: "regions"},
 	}
 
 	for _, tc := range cases {
