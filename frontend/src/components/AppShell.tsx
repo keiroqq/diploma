@@ -46,6 +46,7 @@ import {
 } from "../api/client";
 import type { Item } from "../api/types";
 import { ArticleCard } from "./ArticleCard";
+import { ArticleReaderModal } from "./ArticleReaderModal";
 import { useAuthStore } from "../store/auth";
 import { useUiStore } from "../store/ui";
 import { errorMessage } from "../utils/errors";
@@ -87,11 +88,13 @@ export function AppShell() {
   const searchOpen = useUiStore((state) => state.searchOpen);
   const searchQuery = useUiStore((state) => state.searchQuery);
   const searchScope = useUiStore((state) => state.searchScope);
+  const readerItem = useUiStore((state) => state.readerItem);
   const setDrawerOpen = useUiStore((state) => state.setDrawerOpen);
   const setSearchOpen = useUiStore((state) => state.setSearchOpen);
   const setSearchQuery = useUiStore((state) => state.setSearchQuery);
   const setSearchScope = useUiStore((state) => state.setSearchScope);
   const closeSearch = useUiStore((state) => state.closeSearch);
+  const closeReader = useUiStore((state) => state.closeReader);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dateFromInputRef = useRef<HTMLInputElement>(null);
   const dateToInputRef = useRef<HTMLInputElement>(null);
@@ -1389,6 +1392,8 @@ export function AppShell() {
           </div>
         </div>
       ) : null}
+
+      <ArticleReaderModal item={readerItem} onClose={closeReader} />
     </div>
   );
 }

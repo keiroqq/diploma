@@ -23,6 +23,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/feeds/{id}/items", h.ListFeedItems)
 	r.Get("/items/search", h.SearchItems)
+	r.Get("/items/{id}", h.GetItem)
 	r.Post("/items/{id}/save", h.SaveItem)
 	r.Delete("/items/{id}/save", h.UnsaveItem)
 	r.Get("/saved", h.ListSaved)
@@ -100,6 +101,37 @@ func (h *Handler) SearchItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.service.SearchItems(r.Context(), userID, query)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	httpx.RespondJSON(w, http.StatusOK, resp)
+}
+
+// GetItem godoc
+// @Summary Получить материал для встроенной читалки
+// @Description Возвращает сохраненные данные материала и при необходимости пытается загрузить полный текст со страницы источника.
+// @Tags items
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Item ID"
+// @Success 200 {object} ItemReaderResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/items/{id} [get]
+func (h *Handler) GetItem(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	itemID, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.GetItem(r.Context(), userID, itemID)
 	if err != nil {
 		h.handleError(w, err)
 		return

@@ -106,6 +106,42 @@ func (r *Repository) ItemExists(ctx context.Context, itemID uuid.UUID) (bool, er
 	return count > 0, err
 }
 
+func (r *Repository) GetAccessibleItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (models.FeedItem, error) {
+	var record models.FeedItem
+	err := r.db.WithContext(ctx).
+		Preload("Source").
+		Preload("Tags").
+		Preload("Categories").
+		Where("feed_items.id = ?", itemID).
+		Where(`
+			(
+				EXISTS (
+					SELECT 1
+					FROM feed_sources
+					JOIN feeds ON feeds.id = feed_sources.feed_id
+					WHERE feed_sources.source_id = feed_items.source_id
+						AND feed_sources.is_enabled = true
+						AND feeds.user_id = ?
+				)
+				OR EXISTS (
+					SELECT 1
+					FROM saved_items
+					WHERE saved_items.item_id = feed_items.id
+						AND saved_items.user_id = ?
+				)
+			)
+		`, userID, userID).
+		First(&record).Error
+	return record, err
+}
+
+func (r *Repository) UpdateContentHTML(ctx context.Context, itemID uuid.UUID, contentHTML string) error {
+	return r.db.WithContext(ctx).
+		Model(&models.FeedItem{}).
+		Where("id = ?", itemID).
+		Update("content_html", contentHTML).Error
+}
+
 func (r *Repository) Save(ctx context.Context, item models.SavedItem) error {
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{DoNothing: true}).

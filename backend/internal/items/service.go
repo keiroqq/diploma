@@ -2,6 +2,7 @@ package items
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -9,13 +10,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
+	"gorm.io/gorm"
 
+	"github.com/keiro/content-digest/backend/internal/fetch"
 	httpx "github.com/keiro/content-digest/backend/internal/http"
 	"github.com/keiro/content-digest/backend/internal/models"
 )
 
 type Service struct {
-	repo *Repository
+	repo   *Repository
+	reader *ArticleReader
 }
 
 type scoredItem struct {
@@ -24,7 +28,10 @@ type scoredItem struct {
 }
 
 func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{
+		repo:   repo,
+		reader: NewArticleReader(fetch.NewSafeHTTPClient(fetch.DefaultTimeout, fetch.DefaultMaxResponseBytes)),
+	}
 }
 
 func (s *Service) ListFeedItems(ctx context.Context, feedID uuid.UUID, userID uuid.UUID, query ListQuery) (*FeedItemsResponse, error) {
@@ -127,6 +134,30 @@ func (s *Service) SaveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UU
 
 func (s *Service) UnsaveItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) error {
 	return s.repo.Unsave(ctx, userID, itemID)
+}
+
+func (s *Service) GetItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*ItemReaderResponse, error) {
+	record, err := s.repo.GetAccessibleItem(ctx, userID, itemID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, httpx.ErrNotFound
+		}
+		return nil, err
+	}
+
+	if s.reader != nil && s.reader.ShouldFetch(record) && record.Source.StorageMode == models.SourceStorageServer {
+		if contentHTML, err := s.reader.Fetch(ctx, record); err == nil && strings.TrimSpace(contentHTML) != "" {
+			record.ContentHTML = contentHTML
+			_ = s.repo.UpdateContentHTML(ctx, record.ID, contentHTML)
+		}
+	}
+
+	saved, err := s.repo.SavedMap(ctx, userID, []uuid.UUID{record.ID})
+	if err != nil {
+		return nil, err
+	}
+
+	return itemReaderResponse(record, saved[record.ID], s.reader), nil
 }
 
 func (s *Service) ListSaved(ctx context.Context, userID uuid.UUID, limit int) (*SavedItemsResponse, error) {
@@ -305,6 +336,28 @@ func itemResponse(item models.FeedItem, score int, isSaved bool) ItemResponse {
 		Categories:  categories,
 		Score:       score,
 		IsSaved:     isSaved,
+	}
+}
+
+func itemReaderResponse(item models.FeedItem, isSaved bool, reader *ArticleReader) *ItemReaderResponse {
+	contentHTML := ""
+	if reader != nil {
+		contentHTML = reader.SanitizeForItem(item)
+	} else {
+		contentHTML = strings.TrimSpace(item.ContentHTML)
+	}
+
+	readerHTML := contentHTML
+	hasFullContent := readerHTML != ""
+	if readerHTML == "" && reader != nil {
+		readerHTML = reader.FallbackHTML(item.Excerpt)
+	}
+
+	return &ItemReaderResponse{
+		ItemResponse:   itemResponse(item, 0, isSaved),
+		ContentHTML:    contentHTML,
+		ReaderHTML:     readerHTML,
+		HasFullContent: hasFullContent,
 	}
 }
 

@@ -46,6 +46,13 @@ type ItemResponse struct {
 	IsSaved     bool      `json:"is_saved"`
 }
 
+type ItemReaderResponse struct {
+	ItemResponse
+	ContentHTML    string `json:"content_html"`
+	ReaderHTML     string `json:"reader_html"`
+	HasFullContent bool   `json:"has_full_content"`
+}
+
 type FeedItemsResponse struct {
 	Items      []ItemResponse `json:"items"`
 	Mode       ListMode       `json:"mode"`
