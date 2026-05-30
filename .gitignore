@@ -1,6 +1,8 @@
 .env
 .DS_Store
+.agents/
 .codex/
+.playwright-mcp/
 
 backend/.env
 backend/bin/
