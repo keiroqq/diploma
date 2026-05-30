@@ -357,7 +357,20 @@ make server-deploy
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
 ```
 
-`docker-compose.yml` описывает общую инфраструктуру: PostgreSQL, миграции, переменные, healthchecks и порты. `docker-compose.prod.yml` переопределяет только backend и frontend: вместо локальной сборки используются готовые образы из GHCR.
+`docker-compose.yml` описывает общую инфраструктуру: PostgreSQL, миграции, переменные, healthchecks и порты. `docker-compose.prod.yml` переопределяет backend, frontend и migrator: вместо локальной сборки и bind mount миграций используются готовые образы из GHCR.
+
+Backend-образ содержит миграции и CLI для их применения:
+
+```text
+/app/migrations
+/app/migrate
+```
+
+В production compose сервис `migrate` использует тот же backend-образ, поэтому серверу или Kubernetes Job не нужен отдельный bind mount папки `backend/migrations`. Для Kubernetes миграции можно запускать командой:
+
+```bash
+/app/migrate -path=/app/migrations -database "$DATABASE_URL" up
+```
 
 Для запуска конкретного тега:
 

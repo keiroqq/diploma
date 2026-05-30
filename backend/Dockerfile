@@ -6,6 +6,7 @@ RUN apk add --no-cache ca-certificates git
 
 COPY go.mod go.sum ./
 RUN go mod download
+RUN CGO_ENABLED=0 go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
@@ -23,6 +24,8 @@ RUN apk add --no-cache ca-certificates tzdata \
 WORKDIR /app
 
 COPY --from=build /out/content-digest /app/content-digest
+COPY --from=build /go/bin/migrate /app/migrate
+COPY --from=build /src/migrations /app/migrations
 
 USER app
 

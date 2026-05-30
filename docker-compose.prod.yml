@@ -1,4 +1,15 @@
 services:
+  migrate:
+    image: ${BACKEND_IMAGE:-ghcr.io/keiroqq/diploma-backend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    entrypoint: ["/app/migrate"]
+    command:
+      - -path=/app/migrations
+      - -database
+      - ${DATABASE_URL}
+      - up
+    volumes: !reset []
+
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/keiroqq/diploma-backend}:${IMAGE_TAG:-latest}
     pull_policy: always
