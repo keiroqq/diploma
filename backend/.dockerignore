@@ -1,0 +1,7 @@
+.env
+bin/
+tmp/
+coverage/
+*.test
+*.out
+.air.toml
