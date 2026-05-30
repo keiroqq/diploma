@@ -57,8 +57,9 @@ frontend/
   nginx.conf              # отдача SPA и proxy в backend
 
 docker-compose.yml        # postgres, migrate, backend, frontend
+docker-compose.prod.yml   # production override для запуска готовых GHCR-образов
 .env.example              # шаблон переменных для Docker Compose
-Makefile                  # локальные backend-команды
+Makefile                  # команды локальной разработки и серверного запуска
 ```
 
 ## Быстрый запуск через Docker Compose
@@ -74,8 +75,10 @@ cp .env.example .env
 Запуск:
 
 ```bash
-docker compose up -d --build
+make local-up
 ```
+
+Команда собирает backend и frontend из локальных исходников и запускает весь стек через `docker-compose.yml`.
 
 При запуске выполняется цепочка:
 
@@ -94,16 +97,15 @@ http://localhost:8080
 Проверка сервисов:
 
 ```bash
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f frontend
+make local-ps
+make local-logs
 curl http://localhost:8080/health
 ```
 
 Остановка без удаления данных:
 
 ```bash
-docker compose down
+make local-down
 ```
 
 Не используйте `docker compose down -v`, если нужно сохранить данные PostgreSQL.
@@ -131,9 +133,8 @@ make backend-run
 Запустить frontend:
 
 ```bash
-cd frontend
-npm ci
-npm run dev
+make frontend-install
+make frontend-dev
 ```
 
 Frontend dev server доступен на:
@@ -146,24 +147,56 @@ http://localhost:5173
 
 ## Основные команды
 
+Посмотреть список команд:
+
 ```bash
-make test          # go test ./...
-make vet           # go vet ./...
-make swagger       # обновить Swagger docs
-make backend-run   # запустить backend локально
+make help
+```
+
+Backend и frontend для разработки:
+
+```bash
+make test              # go test ./...
+make vet               # go vet ./...
+make swagger           # обновить Swagger docs
+make backend-run       # запустить backend локально
+make frontend-install  # установить frontend-зависимости
+make frontend-dev      # запустить Vite dev server
+make frontend-build    # собрать frontend
+```
+
+Локальный Docker Compose:
+
+```bash
+make local-config  # проверить итоговый compose-конфиг
+make local-build   # собрать backend и frontend
+make local-up      # собрать и запустить весь стек
+make local-down    # остановить стек
+make local-logs    # смотреть логи
+make local-ps      # показать сервисы
+```
+
+База и миграции для локальной разработки:
+
+```bash
 make db-up         # поднять PostgreSQL
 make db-down       # остановить compose-сервисы
 make migrate-up    # применить миграции
 make migrate-down  # откатить миграции
 ```
 
-Frontend:
+Серверный запуск из GitHub Container Registry:
 
 ```bash
-cd frontend
-npm run dev        # dev server
-npm run build      # typecheck + production build
-npm run preview    # preview production build
+make server-config   # проверить prod-конфиг
+make server-pull     # скачать backend/frontend образы
+make server-up       # запустить стек из готовых образов
+make server-deploy   # скачать свежие образы и запустить стек
+make server-down     # остановить стек
+make server-logs     # смотреть логи
+make server-ps       # показать сервисы
+make server-restart  # перезапустить сервисы
+make server-migrate  # вручную запустить контейнер миграций
 ```
 
 ## Переменные окружения
@@ -296,6 +329,42 @@ https://example.com/api/* -> backend через Nginx proxy
 ```
 
 Текущий Docker Compose публикует frontend на `FRONTEND_PORT`. Для реального домена можно поставить внешний reverse proxy, например Caddy или Nginx, и направить HTTPS-трафик на этот порт.
+
+### Запуск на сервере из GHCR
+
+GitHub Actions публикует Docker-образы:
+
+```text
+ghcr.io/keiroqq/diploma-backend:latest
+ghcr.io/keiroqq/diploma-frontend:latest
+```
+
+На сервере нужен `.env` на основе `.env.example` и файлы compose-проекта. Если GHCR-пакеты закрыты, сначала выполните login:
+
+```bash
+echo <TOKEN> | docker login ghcr.io -u keiroqq --password-stdin
+```
+
+Запуск production-конфигурации:
+
+```bash
+make server-deploy
+```
+
+Эта команда использует два compose-файла:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
+```
+
+`docker-compose.yml` описывает общую инфраструктуру: PostgreSQL, миграции, переменные, healthchecks и порты. `docker-compose.prod.yml` переопределяет только backend и frontend: вместо локальной сборки используются готовые образы из GHCR.
+
+Для запуска конкретного тега:
+
+```bash
+make server-deploy IMAGE_TAG=main
+make server-deploy IMAGE_TAG=sha-<commit>
+```
 
 ## Лицензия
 

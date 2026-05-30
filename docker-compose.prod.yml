@@ -1,0 +1,10 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/keiroqq/diploma-backend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    build: !reset null
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/keiroqq/diploma-frontend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    build: !reset null
