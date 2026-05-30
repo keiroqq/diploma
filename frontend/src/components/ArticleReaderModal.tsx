@@ -101,6 +101,10 @@ export function ArticleReaderModal({ item, onClose }: ArticleReaderModalProps) {
     event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
+  function stopCloseButtonPointer(event: PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+  }
+
   if (!item || !readerItem) {
     return null;
   }
@@ -137,6 +141,9 @@ export function ArticleReaderModal({ item, onClose }: ArticleReaderModalProps) {
             className="icon-button reader-close"
             type="button"
             aria-label="Закрыть читалку"
+            onPointerDown={stopCloseButtonPointer}
+            onPointerMove={stopCloseButtonPointer}
+            onPointerUp={stopCloseButtonPointer}
             onClick={(event) => {
               event.stopPropagation();
               onClose();
@@ -157,7 +164,13 @@ export function ArticleReaderModal({ item, onClose }: ArticleReaderModalProps) {
             className="icon-button reader-close"
             type="button"
             aria-label="Закрыть читалку"
-            onClick={onClose}
+            onPointerDown={stopCloseButtonPointer}
+            onPointerMove={stopCloseButtonPointer}
+            onPointerUp={stopCloseButtonPointer}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
           >
             <X size={20} aria-hidden />
           </button>
