@@ -1,5 +1,7 @@
 package catalog
 
+import "strings"
+
 type Topic struct {
 	ID          string          `json:"id"`
 	Title       string          `json:"title"`
@@ -164,8 +166,25 @@ func habrSource(id string, title string, description string, pageURL string, tag
 		Title:       title,
 		Description: description,
 		PageURL:     pageURL,
+		FeedURL:     habrFeedURL(pageURL),
 		Tags:        tags,
 	}
+}
+
+func habrFeedURL(pageURL string) string {
+	pageURL = strings.TrimSpace(pageURL)
+	if pageURL == "" {
+		return ""
+	}
+
+	feedURL := pageURL
+	if !strings.Contains(feedURL, "/ru/rss/") {
+		feedURL = strings.Replace(feedURL, "/ru/", "/ru/rss/", 1)
+	}
+	if !strings.Contains(feedURL, "?") {
+		feedURL += "?fl=ru"
+	}
+	return feedURL
 }
 
 func sportsSource(id string, title string, description string, feedURL string, tags []string) CatalogSource {

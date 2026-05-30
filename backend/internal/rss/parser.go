@@ -13,6 +13,7 @@ type Parser struct {
 
 func NewParser(client *http.Client) *Parser {
 	parser := gofeed.NewParser()
+	parser.UserAgent = "ContentDigest/1.0 RSS Reader"
 	if client != nil {
 		parser.Client = client
 	}

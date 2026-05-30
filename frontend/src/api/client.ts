@@ -11,6 +11,7 @@ import type {
   Item,
   LoginRequest,
   PreviewItemsResponse,
+  ReaderItem,
   RefreshResult,
   RegisterRequest,
   SavedItemsResponse,
@@ -262,6 +263,10 @@ export function listFeedItems(feedId: string, options: ListFeedItemsParams = {})
   return apiRequest<FeedItemsResponse>(
     `/api/feeds/${feedId}/items?${params.toString()}`
   );
+}
+
+export function getItem(itemId: string) {
+  return apiRequest<ReaderItem>(`/api/items/${itemId}`);
 }
 
 export function saveItem(itemId: string) {

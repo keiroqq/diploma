@@ -5,11 +5,13 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties
+  type CSSProperties,
+  type MouseEvent
 } from "react";
 import { Bookmark, BookmarkCheck, ImageOff, Rss } from "lucide-react";
 
 import type { Item } from "../api/types";
+import { useUiStore } from "../store/ui";
 import { formatPublishedAt } from "../utils/items";
 
 type ArticleCardProps = {
@@ -27,6 +29,7 @@ export function ArticleCard({
   const titleRef = useRef<HTMLAnchorElement>(null);
   const sourceButtonRef = useRef<HTMLButtonElement>(null);
   const sourceTooltipId = useId();
+  const openReader = useUiStore((state) => state.openReader);
   const [titleLines, setTitleLines] = useState(1);
   const [copyLineBudget, setCopyLineBudget] = useState(6);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -39,6 +42,12 @@ export function ArticleCard({
   const cardStyle = {
     "--article-excerpt-lines": excerptLines
   } as CSSProperties;
+
+  function handleOpenReader(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    setDetailsOpen(false);
+    openReader(item);
+  }
 
   useLayoutEffect(() => {
     const card = cardRef.current;
@@ -131,9 +140,8 @@ export function ArticleCard({
       <a
         className="article-media"
         href={item.url}
-        target="_blank"
-        rel="noreferrer"
         aria-label={item.title}
+        onClick={handleOpenReader}
       >
         {item.image_url ? (
           <img src={item.image_url} alt="" loading="lazy" />
@@ -150,8 +158,7 @@ export function ArticleCard({
             ref={titleRef}
             className="article-title"
             href={item.url}
-            target="_blank"
-            rel="noreferrer"
+            onClick={handleOpenReader}
           >
             {item.title}
           </a>

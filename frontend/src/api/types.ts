@@ -144,6 +144,12 @@ export type Item = {
   cached_at?: string;
 };
 
+export type ReaderItem = Item & {
+  content_html: string;
+  reader_html: string;
+  has_full_content: boolean;
+};
+
 export type PreviewItem = Item & {
   category_slugs: string[];
   search_text: string;
