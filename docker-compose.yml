@@ -3,11 +3,11 @@ services:
     image: postgres:16
     container_name: content_digest_postgres
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: content_digest
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,13 +18,61 @@ services:
 
   migrate:
     image: migrate/migrate:v4.18.3
-    profiles:
-      - tools
+    container_name: content_digest_migrate
+    command:
+      - -path=/migrations
+      - -database
+      - ${DATABASE_URL}
+      - up
     volumes:
       - ./backend/migrations:/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+    container_name: content_digest_backend
+    environment:
+      APP_ENV: ${APP_ENV}
+      HTTP_PORT: ${HTTP_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      LOG_LEVEL: ${LOG_LEVEL}
+      RSS_REFRESH_COOLDOWN: ${RSS_REFRESH_COOLDOWN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: content_digest_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
 volumes:
   postgres_data:

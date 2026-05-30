@@ -47,6 +47,11 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/health": "http://localhost:8080",
+      "/swagger": "http://localhost:8080"
+    }
   }
 });
